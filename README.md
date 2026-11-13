@@ -31,7 +31,7 @@ You can enter API keys in the UI (**Connections & Keys**) or set them as environ
 - **Overview**: revenue, net profit, margin, ad spend, POAS and return rate with period-over-period change; daily trend; a "where the money goes" breakdown; top AI findings.
 - **Products**: every SKU after COGS, refunds, its share of shipping and payment fees, and allocated ad spend.
 - **Marketing**: channels and campaigns ranked by **POAS** (profit on ad spend), not just ROAS.
-- **AI assistant**: a chat drawer on every page. It defaults to NVIDIA `nemotron-3.5-super-vl-120b-a12b` (set `NVIDIA_API_KEY`); Anthropic, OpenAI or the Vercel AI Gateway work via env vars. The model calls typed tools over the profit engine, so every number it quotes is the number on screen.
+- **AI assistant**: a chat drawer on every page. It defaults to NVIDIA `nemotron-3.5-super-vl-120b-a12b` (set `NVIDIA_API_KEY`), called with NVIDIA's recommended settings (`lib/ai/nvidia.ts`): temperature 1, top_p 0.95, max_tokens 16384, seed 42, parallel tool calls, thinking enabled. The model's reasoning appears collapsed in the chat. Anthropic, OpenAI or the Vercel AI Gateway work via env vars. The model calls typed tools over the profit engine, so every number it quotes is the number on screen.
 - **AI insights**: a rule engine detects money leaks and opportunities, and the LLM writes an executive briefing. A Vercel Cron job refreshes it daily and can post critical alerts to Slack.
 - **Connections & Keys**: connect sources and see their status (live / demo / planned).
 

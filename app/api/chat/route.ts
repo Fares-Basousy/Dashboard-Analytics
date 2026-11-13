@@ -5,7 +5,8 @@ import { DEFAULT_PRESET, isPreset, toISODate } from "@/lib/date-range";
 import { getModel } from "@/lib/ai/provider";
 import { createTools, systemPrompt } from "@/lib/ai/tools";
 
-export const maxDuration = 60;
+// Thinking models (Nemotron, enable_thinking, up to 16k tokens) need headroom beyond 60s.
+export const maxDuration = 300;
 
 const MAX_TOOL_STEPS = 6;
 

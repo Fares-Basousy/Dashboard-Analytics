@@ -1,18 +1,15 @@
 import type { LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createNvidiaModel, NVIDIA_DEFAULT_MODEL } from "./nvidia";
 import { createGateway } from "ai";
 import type { Credentials } from "@/lib/credentials/fields";
 import { createDemoModel } from "./demo-model";
 
 type ProviderId = "nvidia" | "anthropic" | "openai" | "gateway" | "demo";
 
-/** NVIDIA NIM exposes an OpenAI-compatible Chat Completions API. */
-const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
-
 const DEFAULT_MODELS: Record<ProviderId, string> = {
-  nvidia: "nvidia/nemotron-3.5-super-vl-120b-a12b",
+  nvidia: NVIDIA_DEFAULT_MODEL,
   anthropic: "claude-sonnet-5-5",
   openai: "gpt-6-astra",
   gateway: "anthropic/claude-sonnet-5.5",
@@ -20,7 +17,7 @@ const DEFAULT_MODELS: Record<ProviderId, string> = {
 };
 
 const FACTORIES: Record<ProviderId, (id: string, creds: Credentials) => LanguageModel> = {
-  nvidia: (id, c) => createOpenAICompatible({ name: "nvidia", baseURL: NVIDIA_BASE_URL, apiKey: c.NVIDIA_API_KEY }).chatModel(id),
+  nvidia: (id, c) => createNvidiaModel(id, c.NVIDIA_API_KEY),
   anthropic: (id, c) => createAnthropic({ apiKey: c.ANTHROPIC_API_KEY })(id),
   openai: (id, c) => createOpenAI({ apiKey: c.OPENAI_API_KEY })(id),
   gateway: (id, c) => createGateway({ apiKey: c.AI_GATEWAY_API_KEY })(id),

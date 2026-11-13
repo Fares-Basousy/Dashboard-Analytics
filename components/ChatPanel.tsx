@@ -97,6 +97,15 @@ export function ChatPanel() {
                     </div>
                   );
                 }
+                if (part.type === "reasoning" && part.text.trim()) {
+                  // Nemotron runs with enable_thinking – show its reasoning, collapsed.
+                  return (
+                    <details key={i} className="my-1 text-xs text-muted">
+                      <summary className="cursor-pointer select-none">Thinking…</summary>
+                      <p className="mt-1 whitespace-pre-wrap border-l-2 border-border pl-2">{part.text}</p>
+                    </details>
+                  );
+                }
                 if (part.type.startsWith("tool-")) {
                   const name = part.type.slice(5);
                   return (
