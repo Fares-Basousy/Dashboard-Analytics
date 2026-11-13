@@ -26,6 +26,7 @@ export const sv: Partial<Messages> = {
   "banner.demo": "Demodata för {sources}. {connect} för att se riktiga siffror. {how}",
   "banner.connect": "Anslut dina konton",
   "banner.how": "Så fungerar demoläget",
+  "banner.scaled": "Demosiffrorna för annonser är skalade efter butikens verkliga intäkter.",
 
   "kpi.revenue": "Intäkter",
   "kpi.netProfit": "Nettovinst",

@@ -28,6 +28,7 @@ export async function DataSourceNotice({ sources }: { sources: SourceInfo[] }) {
               </Link>
             ),
           })}
+          {mock.some((s) => s.scaledToShop) && ` ${t("banner.scaled")}`}
         </p>
       )}
     </div>

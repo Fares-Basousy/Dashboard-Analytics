@@ -26,6 +26,7 @@ export const de: Partial<Messages> = {
   "banner.demo": "Demodaten für {sources}. {connect}, um echte Zahlen zu sehen. {how}",
   "banner.connect": "Verbinde deine Konten",
   "banner.how": "So funktioniert der Demomodus",
+  "banner.scaled": "Die Demo-Werbezahlen sind auf den echten Umsatz deines Shops skaliert.",
 
   "kpi.revenue": "Umsatz",
   "kpi.netProfit": "Nettogewinn",

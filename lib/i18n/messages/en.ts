@@ -28,6 +28,7 @@ export const en = {
   "banner.demo": "Demo data for {sources}. {connect} to see real numbers. {how}",
   "banner.connect": "Connect your accounts",
   "banner.how": "How demo mode works",
+  "banner.scaled": "The demo ad figures are scaled to your shop's real revenue.",
 
   "kpi.revenue": "Revenue",
   "kpi.netProfit": "Net profit",

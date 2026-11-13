@@ -64,7 +64,8 @@ export function scaleDemoAdsToLiveShop(results: SliceResult[], connectors: Conne
       clicks: Math.round(d.clicks * factor),
       impressions: Math.round(d.impressions * factor),
     }));
-    return { slice: { ...r.slice, adSpend }, info: { ...r.info, scaledToShop: true } };
+    const message = `${r.info.message ?? "Demo data"} – scaled to the live shop's revenue (factor ${factor.toFixed(3)})`;
+    return { slice: { ...r.slice, adSpend }, info: { ...r.info, scaledToShop: true, message } };
   });
 }
 
