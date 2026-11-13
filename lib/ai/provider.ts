@@ -1,13 +1,18 @@
 import type { LanguageModel } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createGateway } from "ai";
 import type { Credentials } from "@/lib/credentials/fields";
 import { createDemoModel } from "./demo-model";
 
-type ProviderId = "anthropic" | "openai" | "gateway" | "demo";
+type ProviderId = "nvidia" | "anthropic" | "openai" | "gateway" | "demo";
+
+/** NVIDIA NIM exposes an OpenAI-compatible Chat Completions API. */
+const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
 const DEFAULT_MODELS: Record<ProviderId, string> = {
+  nvidia: "nvidia/nemotron-3.5-super-vl-120b-a12b",
   anthropic: "claude-sonnet-5-5",
   openai: "gpt-6-astra",
   gateway: "anthropic/claude-sonnet-5.5",
@@ -15,6 +20,7 @@ const DEFAULT_MODELS: Record<ProviderId, string> = {
 };
 
 const FACTORIES: Record<ProviderId, (id: string, creds: Credentials) => LanguageModel> = {
+  nvidia: (id, c) => createOpenAICompatible({ name: "nvidia", baseURL: NVIDIA_BASE_URL, apiKey: c.NVIDIA_API_KEY }).chatModel(id),
   anthropic: (id, c) => createAnthropic({ apiKey: c.ANTHROPIC_API_KEY })(id),
   openai: (id, c) => createOpenAI({ apiKey: c.OPENAI_API_KEY })(id),
   gateway: (id, c) => createGateway({ apiKey: c.AI_GATEWAY_API_KEY })(id),
@@ -25,6 +31,7 @@ const FACTORIES: Record<ProviderId, (id: string, creds: Credentials) => Language
 function detectProvider(creds: Credentials): ProviderId {
   const explicit = creds.AI_PROVIDER as ProviderId | undefined;
   if (explicit && explicit in FACTORIES) return explicit;
+  if (creds.NVIDIA_API_KEY) return "nvidia";
   if (creds.ANTHROPIC_API_KEY) return "anthropic";
   if (creds.OPENAI_API_KEY) return "openai";
   if (creds.AI_GATEWAY_API_KEY) return "gateway";
@@ -32,11 +39,13 @@ function detectProvider(creds: Credentials): ProviderId {
 }
 
 /**
- * Swap provider/model via saved keys or env vars: AI_PROVIDER=anthropic|openai|gateway|demo, AI_MODEL=<model id>.
+ * Swap provider/model via saved keys or env vars: AI_PROVIDER=nvidia|anthropic|openai|gateway|demo, AI_MODEL=<model id>.
  * Without any key the offline demo model is used, so the app always works.
  */
 export function getModel(creds: Credentials): { model: LanguageModel; label: string; isDemo: boolean } {
   const provider = detectProvider(creds);
   const id = creds.AI_MODEL || DEFAULT_MODELS[provider];
-  return { model: FACTORIES[provider](id, creds), label: `${provider}/${id}`, isDemo: provider === "demo" };
+  // Avoid "nvidia/nvidia/…" when the model id is already namespaced by its provider.
+  const label = id.startsWith(`${provider}/`) ? id : `${provider}/${id}`;
+  return { model: FACTORIES[provider](id, creds), label, isDemo: provider === "demo" };
 }

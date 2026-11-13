@@ -51,6 +51,7 @@ describe("provider selection", () => {
     [{ OPENAI_API_KEY: "sk" }, "openai"],
     [{ OPENAI_API_KEY: "sk", ANTHROPIC_API_KEY: "a" }, "anthropic"],
     [{ ANTHROPIC_API_KEY: "a", AI_PROVIDER: "openai", AI_MODEL: "gpt-x" }, "openai/gpt-x"],
+    [{ NVIDIA_API_KEY: "nvapi-x", ANTHROPIC_API_KEY: "a" }, "nvidia/nemotron-3.5-super-vl-120b-a12b"],
   ])("%j → %s", (creds, expected) => {
     expect(getModel(creds).label.startsWith(expected)).toBe(true);
   });
