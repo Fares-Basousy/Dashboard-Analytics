@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CredentialForm } from "@/components/CredentialForm";
+import { KeysExplainer } from "@/components/KeysExplainer";
 import { CONNECTORS } from "@/lib/connectors/registry";
 import { CREDENTIAL_GROUPS, isGroupConfigured, type Credentials } from "@/lib/credentials/fields";
 import { getCredentials, getCredentialSources } from "@/lib/credentials/store";
@@ -15,8 +16,11 @@ export default function SettingsPage() {
     <>
       <PageHeader
         title="Connections & keys"
-        description="Connect your accounts. Keys are stored only in this browser, in an encrypted httpOnly cookie that JavaScript cannot read, and are used server-side for API calls. Server environment variables are used as a fallback."
+        description="Connect your accounts and AI model. Everything works without keys – connect only what you want to see live."
       />
+      <div className="mb-6">
+        <KeysExplainer />
+      </div>
       <Suspense fallback={<Skeleton className="h-96" />}>
         <Settings />
       </Suspense>

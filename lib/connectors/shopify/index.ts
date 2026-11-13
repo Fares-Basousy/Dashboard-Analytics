@@ -22,9 +22,9 @@ const ORDERS_QUERY = `query($cursor: String, $q: String) {
   orders(first: 100, after: $cursor, query: $q) {
     pageInfo { hasNextPage endCursor }
     nodes {
-      id createdAt
+      id processedAt taxesIncluded
       totalPriceSet { shopMoney { amount } }
-      lineItems(first: 50) { nodes { name sku variant { id } quantity originalUnitPriceSet { shopMoney { amount } } totalDiscountSet { shopMoney { amount } } } }
+      lineItems(first: 50) { nodes { name sku variant { id } quantity originalUnitPriceSet { shopMoney { amount } } totalDiscountSet { shopMoney { amount } } taxLines { priceSet { shopMoney { amount } } } } }
       refunds { createdAt refundLineItems(first: 50) { nodes { quantity subtotalSet { shopMoney { amount } } lineItem { name sku variant { id } } } } }
       transactions(first: 5) { fees { amount { amount } } }
     }
@@ -74,7 +74,7 @@ export const shopify: Connector = {
     const [currency, variants, orderNodes] = await Promise.all([
       shopCurrency(creds, token),
       paginate<ShopifyVariantNode>(creds, token, VARIANTS_QUERY, "productVariants"),
-      paginate<ShopifyOrderNode>(creds, token, ORDERS_QUERY, "orders", { q: `created_at:>=${range.from} created_at:<=${range.to}T23:59:59` }),
+      paginate<ShopifyOrderNode>(creds, token, ORDERS_QUERY, "orders", { q: `processed_at:>=${range.from} processed_at:<=${range.to}T23:59:59` }),
     ]);
     const cost = costConfig();
     const mapped = orderNodes.map((o) => mapOrder(o, cost));

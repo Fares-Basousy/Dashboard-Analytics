@@ -67,6 +67,15 @@ describe("profit engine", () => {
     expect(products.reduce((s, p) => s + p.adSpend, 0)).toBeCloseTo(80, 2);
   });
 
+  it("never counts VAT contained in prices as revenue", () => {
+    const ds2 = tinyDataset();
+    ds2.orders[0].lines[0].includedTax = 8; // A sold for 100 incl. 8 VAT
+    const s = summarize(ds2);
+    expect(s.revenue).toBe(282);
+    expect(s.netProfit).toBeCloseTo(-56, 1);
+    expect(dailySeries(ds2).reduce((sum, d) => sum + d.revenue, 0)).toBe(282);
+  });
+
   it("gives free items no share of order costs", () => {
     const ds2 = tinyDataset();
     ds2.orders[1].lines.push({ sku: "B", qty: 1, unitPrice: 10, discount: 10 }); // free gift in o2

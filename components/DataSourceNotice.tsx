@@ -15,7 +15,10 @@ export function DataSourceNotice({ sources }: { sources: SourceInfo[] }) {
           <Link href="/settings" className="font-medium underline">
             Connect your accounts
           </Link>{" "}
-          to see real numbers.
+          to see real numbers.{" "}
+          <Link href="/settings#how-it-works" className="underline">
+            How demo mode works
+          </Link>
         </p>
       )}
     </div>

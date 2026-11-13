@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "seed:shopify": "tsx scripts/seed-shopify.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.102",
@@ -41,6 +42,7 @@
     "eslint-config-next": "16.4.6",
     "jsdom": "^31.0.0",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.1.0"
   },

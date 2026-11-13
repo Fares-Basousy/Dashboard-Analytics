@@ -20,6 +20,11 @@ export interface OrderLine {
   qty: number;
   unitPrice: number;
   discount: number;
+  /**
+   * Tax contained in the line price (shops with tax-inclusive prices, common in CH/EU).
+   * VAT is passed on to the state, so it is never revenue.
+   */
+  includedTax?: number;
 }
 
 export interface Order {

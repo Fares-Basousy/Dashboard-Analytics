@@ -13,6 +13,7 @@ import type {
   ChannelPerformance,
   DailyPoint,
   Dataset,
+  OrderLine,
   ProductProfit,
   ProfitBreakdown,
 } from "@/lib/domain/types";
@@ -34,7 +35,8 @@ function finish<T extends Totals>(t: T): T & ProfitBreakdown {
   } as T & ProfitBreakdown;
 }
 
-const lineRevenue = (l: { unitPrice: number; qty: number; discount: number }) => l.unitPrice * l.qty - l.discount;
+/** Net revenue of a line: after discounts and without any VAT contained in the price. */
+const lineRevenue = (l: OrderLine) => l.unitPrice * l.qty - l.discount - (l.includedTax ?? 0);
 
 export function productProfits(ds: Dataset): ProductProfit[] {
   const catalog = new Map(ds.products.map((p) => [p.sku, p]));

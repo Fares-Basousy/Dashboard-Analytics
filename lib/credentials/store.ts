@@ -4,7 +4,8 @@ import { ALL_CREDENTIAL_KEYS, ALL_FIELDS, normalizeCredential, type CredentialKe
 import { seal, unseal } from "./crypto";
 
 const COOKIE_NAME = "pd_credentials";
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+export const CREDENTIAL_COOKIE_DAYS = 30;
+const MAX_AGE_SECONDS = 60 * 60 * 24 * CREDENTIAL_COOKIE_DAYS;
 
 /** Credentials from the server environment only (used by cron jobs, which have no browser session). */
 export function envCredentials(): Credentials {

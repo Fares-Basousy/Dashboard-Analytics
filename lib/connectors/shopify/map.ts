@@ -24,9 +24,12 @@ interface ShopifyLineItem {
 
 export interface ShopifyOrderNode {
   id: string;
-  createdAt: string;
+  /** Business date of the order (equals createdAt unless the order was imported/backdated). */
+  processedAt: string;
+  /** When true, line item prices include tax. */
+  taxesIncluded: boolean;
   totalPriceSet: Money;
-  lineItems: { nodes: (ShopifyLineItem & { quantity: number; originalUnitPriceSet: Money; totalDiscountSet: Money })[] };
+  lineItems: { nodes: (ShopifyLineItem & { quantity: number; originalUnitPriceSet: Money; totalDiscountSet: Money; taxLines: { priceSet: Money }[] })[] };
   refunds: {
     createdAt: string;
     refundLineItems: { nodes: { quantity: number; subtotalSet: Money; lineItem: ShopifyLineItem }[] };
@@ -66,8 +69,14 @@ export function mapOrder(o: ShopifyOrderNode, cost: CostConfig): { order: Order;
   const total = amount(o.totalPriceSet);
   const order: Order = {
     id,
-    date: o.createdAt.slice(0, 10),
-    lines: o.lineItems.nodes.map((l) => ({ sku: lineKey(l), qty: l.quantity, unitPrice: amount(l.originalUnitPriceSet), discount: amount(l.totalDiscountSet) })),
+    date: o.processedAt.slice(0, 10),
+    lines: o.lineItems.nodes.map((l) => ({
+      sku: lineKey(l),
+      qty: l.quantity,
+      unitPrice: amount(l.originalUnitPriceSet),
+      discount: amount(l.totalDiscountSet),
+      includedTax: o.taxesIncluded ? l.taxLines.reduce((s, t) => s + amount(t.priceSet), 0) : 0,
+    })),
     shippingCost: cost.shippingCostPerOrder,
     // Shopify Payments exposes real fees; other gateways fall back to the configured rate.
     paymentFee: round2(realFees || total * cost.paymentFeePct + cost.paymentFeeFixed),

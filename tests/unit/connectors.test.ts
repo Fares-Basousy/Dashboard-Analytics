@@ -31,9 +31,10 @@ describe("Shopify mapper", () => {
     const { order, refunds } = mapOrder(
       {
         id: "gid://shopify/Order/9",
-        createdAt: "2026-11-01T10:00:00Z",
+        processedAt: "2026-11-01T10:00:00Z",
+        taxesIncluded: false,
         totalPriceSet: money("5"),
-        lineItems: { nodes: [{ ...line, quantity: 1, originalUnitPriceSet: money("5"), totalDiscountSet: money("0") }, { name: "Gift wrap", sku: null, variant: null, quantity: 1, originalUnitPriceSet: money("2"), totalDiscountSet: money("0") }] },
+        lineItems: { nodes: [{ ...line, quantity: 1, originalUnitPriceSet: money("5"), totalDiscountSet: money("0"), taxLines: [] }, { name: "Gift wrap", sku: null, variant: null, quantity: 1, originalUnitPriceSet: money("2"), totalDiscountSet: money("0"), taxLines: [] }] },
         refunds: [{ createdAt: "2026-11-02T00:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("5"), lineItem: line }] } }],
         transactions: [],
       },
@@ -47,21 +48,55 @@ describe("Shopify mapper", () => {
     const { order, refunds } = mapOrder(
       {
         id: "gid://shopify/Order/123",
-        createdAt: "2026-11-01T10:00:00Z",
+        processedAt: "2026-11-01T10:00:00Z",
+        taxesIncluded: false,
         totalPriceSet: money("50.00"),
-        lineItems: { nodes: [{ name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" }, quantity: 2, originalUnitPriceSet: money("25.00"), totalDiscountSet: money("5.00") }] },
+        lineItems: { nodes: [{ name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" }, quantity: 2, originalUnitPriceSet: money("25.00"), totalDiscountSet: money("5.00"), taxLines: [] }] },
         refunds: [{ createdAt: "2026-11-03T09:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("22.50"), lineItem: { name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" } } }] } }],
         transactions: [{ fees: [{ amount: { amount: "1.75" } }] }],
       },
       costConfig(),
     );
-    expect(order).toEqual({ id: "123", date: "2026-11-01", lines: [{ sku: "X-1", qty: 2, unitPrice: 25, discount: 5 }], shippingCost: 6.5, paymentFee: 1.75 });
+    expect(order).toEqual({ id: "123", date: "2026-11-01", lines: [{ sku: "X-1", qty: 2, unitPrice: 25, discount: 5, includedTax: 0 }], shippingCost: 6.5, paymentFee: 1.75 });
     expect(refunds).toEqual([{ orderId: "123", date: "2026-11-03", sku: "X-1", qty: 1, amount: 22.5 }]);
+  });
+
+  it("removes VAT from line revenue when the shop's prices include tax", () => {
+    const { order } = mapOrder(
+      {
+        id: "7",
+        processedAt: "2026-10-20T09:00:00Z",
+        taxesIncluded: true,
+        totalPriceSet: money("108.10"),
+        lineItems: { nodes: [{ name: "Pump", sku: "P", variant: null, quantity: 1, originalUnitPriceSet: money("108.10"), totalDiscountSet: money("0"), taxLines: [{ priceSet: money("8.10") }] }] },
+        refunds: [],
+        transactions: [],
+      },
+      costConfig(),
+    );
+    expect(order.date).toBe("2026-10-20"); // business date, not import time
+    expect(order.lines[0]).toMatchObject({ unitPrice: 108.1, includedTax: 8.1 });
+  });
+
+  it("ignores tax lines when prices exclude tax (tax is charged on top)", () => {
+    const { order } = mapOrder(
+      {
+        id: "8",
+        processedAt: "2026-10-20T09:00:00Z",
+        taxesIncluded: false,
+        totalPriceSet: money("108.10"),
+        lineItems: { nodes: [{ name: "Pump", sku: "P", variant: null, quantity: 1, originalUnitPriceSet: money("100"), totalDiscountSet: money("0"), taxLines: [{ priceSet: money("8.10") }] }] },
+        refunds: [],
+        transactions: [],
+      },
+      costConfig(),
+    );
+    expect(order.lines[0].includedTax).toBe(0);
   });
 
   it("estimates payment fees when the gateway reports none", () => {
     const { order } = mapOrder(
-      { id: "1", createdAt: "2026-11-01T00:00:00Z", totalPriceSet: money("100"), lineItems: { nodes: [] }, refunds: [], transactions: [] },
+      { id: "1", processedAt: "2026-11-01T00:00:00Z", taxesIncluded: false, totalPriceSet: money("100"), lineItems: { nodes: [] }, refunds: [], transactions: [] },
       { shippingCostPerOrder: 0, paymentFeePct: 0.02, paymentFeeFixed: 0.5 },
     );
     expect(order.paymentFee).toBe(2.5);

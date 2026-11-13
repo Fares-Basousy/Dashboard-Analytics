@@ -20,7 +20,7 @@ function fakeShopify() {
       return json({ data: { productVariants: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: "gid://shopify/ProductVariant/1", sku: "P-1", title: "Default Title", price: "50.00", product: { title: "Pump", productType: "Washer" }, inventoryItem: { unitCost: { amount: "20.00" } } }] } } });
     }
     const page = variables.cursor ? 2 : 1;
-    const order = { id: `gid://shopify/Order/${page}`, createdAt: "2026-11-02T10:00:00Z", totalPriceSet: { shopMoney: { amount: "50.00" } }, lineItems: { nodes: [{ name: "Pump", sku: "P-1", variant: { id: "gid://shopify/ProductVariant/1" }, quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "50.00" } }, totalDiscountSet: { shopMoney: { amount: "0" } } }] }, refunds: [], transactions: [] };
+    const order = { id: `gid://shopify/Order/${page}`, processedAt: "2026-11-02T10:00:00Z", taxesIncluded: false, totalPriceSet: { shopMoney: { amount: "50.00" } }, lineItems: { nodes: [{ name: "Pump", sku: "P-1", variant: { id: "gid://shopify/ProductVariant/1" }, quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "50.00" } }, totalDiscountSet: { shopMoney: { amount: "0" } }, taxLines: [] }] }, refunds: [], transactions: [] };
     return json({ data: { orders: { pageInfo: { hasNextPage: page === 1, endCursor: page === 1 ? "c1" : null }, nodes: [order] } } });
   });
   return { fetchMock, calls };
@@ -75,6 +75,6 @@ describe("Shopify access token", () => {
     expect(graphql[0].url).toBe(`https://${DOMAIN}/admin/api/2026-10/graphql.json`);
     expect(graphql.every((c) => new Headers(c.init?.headers).get("x-shopify-access-token") === "tok-1")).toBe(true);
     const orderQuery = JSON.parse(String(graphql.find((c) => String(c.init?.body).includes("orders("))!.init?.body));
-    expect(orderQuery.variables.q).toBe("created_at:>=2026-11-01 created_at:<=2026-11-02T23:59:59");
+    expect(orderQuery.variables.q).toBe("processed_at:>=2026-11-01 processed_at:<=2026-11-02T23:59:59");
   });
 });
