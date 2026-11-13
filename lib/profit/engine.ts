@@ -13,6 +13,7 @@ import type {
   ChannelPerformance,
   DailyPoint,
   Dataset,
+  Order,
   OrderLine,
   ProductProfit,
   ProfitBreakdown,
@@ -37,6 +38,9 @@ function finish<T extends Totals>(t: T): T & ProfitBreakdown {
 
 /** Net revenue of a line: after discounts and without any VAT contained in the price. */
 const lineRevenue = (l: OrderLine) => l.unitPrice * l.qty - l.discount - (l.includedTax ?? 0);
+
+/** Net revenue of a set of orders (same definition as everywhere else in the engine). */
+export const ordersRevenue = (orders: Order[]) => orders.reduce((sum, o) => sum + o.lines.reduce((s, l) => s + lineRevenue(l), 0), 0);
 
 export function productProfits(ds: Dataset): ProductProfit[] {
   const catalog = new Map(ds.products.map((p) => [p.sku, p]));

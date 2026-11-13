@@ -217,3 +217,46 @@ describe("connector registry", () => {
     expect(a.orders).toEqual(b.orders);
   });
 });
+
+describe("demo ads next to a live shop", () => {
+  const RANGE30 = { from: "2026-10-15", to: "2026-11-13" };
+  const order = (net: number) => ({ id: `o${net}`, date: "2026-11-01", shippingCost: 0, paymentFee: 0, lines: [{ sku: "A", qty: 1, unitPrice: net, discount: 0 }] });
+  const liveShop = (revenue: number): Connector => ({
+    id: "shop",
+    name: "Shop",
+    provides: "",
+    credentialGroup: "shopify",
+    fetch: async () => ({ orders: [order(revenue)] }),
+    mock: (r) => ({ orders: [order(10_000)], products: [], range: r } as never),
+  });
+  const demoAds: Connector = {
+    id: "ads",
+    name: "Ads",
+    provides: "",
+    credentialGroup: "meta",
+    fetch: async () => ({}),
+    mock: () => ({ adSpend: [{ campaignId: "c", date: "2026-11-01", spend: 1000, impressions: 50_000, clicks: 900, conversions: 40, conversionValue: 4000 }] }),
+  };
+  const shopCreds = { SHOPIFY_STORE_DOMAIN: "x.myshopify.com", SHOPIFY_ADMIN_TOKEN: "t" };
+
+  it("resizes demo ad data to the live shop's revenue and keeps ROAS", async () => {
+    const ds = await loadDataset(RANGE30, shopCreds, [liveShop(1_000), demoAds]); // live shop is 10% of the demo shop
+    const [ad] = ds.adSpend;
+    expect(ad.spend).toBe(100);
+    expect(ad.conversionValue).toBe(400);
+    expect(ad.conversionValue / ad.spend).toBe(4); // same ROAS as before
+    expect(ds.sources.find((s) => s.id === "ads")).toMatchObject({ status: "mock", scaledToShop: true });
+  });
+
+  it("leaves demo ads untouched when the shop is demo data too", async () => {
+    const ds = await loadDataset(RANGE30, {}, [liveShop(1_000), demoAds]);
+    expect(ds.adSpend[0].spend).toBe(1000);
+    expect(ds.sources.find((s) => s.id === "ads")?.scaledToShop).toBeUndefined();
+  });
+
+  it("never changes real ad data", async () => {
+    const liveAds: Connector = { ...demoAds, fetch: async () => demoAds.mock(RANGE30) };
+    const ds = await loadDataset(RANGE30, { ...shopCreds, META_ACCESS_TOKEN: "t", META_AD_ACCOUNT_ID: "act_1" }, [liveShop(1_000), liveAds]);
+    expect(ds.adSpend[0].spend).toBe(1000);
+  });
+});

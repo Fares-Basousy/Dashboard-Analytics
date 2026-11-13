@@ -74,6 +74,8 @@ export interface SourceInfo {
   provides: string;
   status: SourceStatus;
   message?: string;
+  /** Demo data resized to the live shop (see scaleDemoAdsToLiveShop). */
+  scaledToShop?: boolean;
 }
 
 export interface Dataset {
