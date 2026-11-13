@@ -6,7 +6,7 @@
  */
 import type { AdCampaign, AdSpendDaily, DateRange, ISODate, Order, Product, Refund } from "@/lib/domain/types";
 import { addDays, eachDay, inRange, toISODate } from "@/lib/date-range";
-import { round2 } from "@/lib/format";
+import { DEFAULT_CURRENCY, round2 } from "@/lib/format";
 import { costConfig } from "@/lib/config";
 
 const REFUND_DELAY_DAYS = 6;
@@ -152,7 +152,7 @@ export function mockShop(range: DateRange, today = todayUTC()) {
     refunds.push(...day.refunds.filter((x) => inRange(x.date, range)));
   }
   const products: Product[] = MOCK_PRODUCTS.map(({ sku, title, category, price, unitCost }) => ({ sku, title, category, price, unitCost }));
-  return { products, orders, refunds };
+  return { currency: DEFAULT_CURRENCY, products, orders, refunds };
 }
 
 export function mockAds(channel: AdCampaign["channel"], range: DateRange) {

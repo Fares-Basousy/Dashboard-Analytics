@@ -18,22 +18,22 @@ type ChannelRow = ReturnType<typeof channelPerformance>[number] & { channelLabel
 const CAMPAIGN_COLUMNS: Column<CampaignRow>[] = [
   { key: "name", label: "Campaign", subKey: "channelLabel" },
   { key: "type", label: "Type" },
-  { key: "spend", label: "Spend", format: "chf" },
-  { key: "revenue", label: "Conv. value", format: "chf" },
+  { key: "spend", label: "Spend", format: "money" },
+  { key: "revenue", label: "Conv. value", format: "money" },
   { key: "roas", label: "ROAS", format: "ratio" },
-  { key: "attributedProfit", label: "Gross profit", format: "chf" },
+  { key: "attributedProfit", label: "Gross profit", format: "money" },
   { key: "poas", label: "POAS", format: "ratio", tone: "poas" },
-  { key: "netProfit", label: "Net profit", format: "chf", tone: "signed" },
+  { key: "netProfit", label: "Net profit", format: "money", tone: "signed" },
 ];
 
 const CHANNEL_COLUMNS: Column<ChannelRow>[] = [
   { key: "channelLabel", label: "Channel" },
   { key: "campaigns", label: "Campaigns", format: "number" },
-  { key: "spend", label: "Spend", format: "chf" },
-  { key: "revenue", label: "Conv. value", format: "chf" },
+  { key: "spend", label: "Spend", format: "money" },
+  { key: "revenue", label: "Conv. value", format: "money" },
   { key: "roas", label: "ROAS", format: "ratio" },
   { key: "poas", label: "POAS", format: "ratio", tone: "poas" },
-  { key: "netProfit", label: "Net profit", format: "chf", tone: "signed" },
+  { key: "netProfit", label: "Net profit", format: "money", tone: "signed" },
 ];
 
 export default function MarketingPage({ searchParams }: PageProps<"/marketing">) {
@@ -41,7 +41,7 @@ export default function MarketingPage({ searchParams }: PageProps<"/marketing">)
     <>
       <PageHeader
         title="Marketing performance"
-        description="ROAS shows revenue per CHF spent; POAS shows profit per CHF spent after product cost, refunds, shipping and fees. POAS < 1 means the campaign loses money."
+        description="ROAS shows revenue per unit of ad spend; POAS shows profit per unit of ad spend after product cost, refunds, shipping and fees. POAS < 1 means the campaign loses money."
       />
       <PageData searchParams={searchParams}>{(ctx) => <Marketing ctx={ctx} />}</PageData>
     </>
@@ -59,17 +59,17 @@ async function Marketing({ ctx }: { ctx: PageContext }) {
   return (
     <div className="space-y-6">
       <DataSourceNotice sources={ds.sources} />
-      <KpiGrid items={marketingKpis(campaigns, campaignPerformance(prev))} />
+      <KpiGrid items={marketingKpis(campaigns, campaignPerformance(prev))} currency={ds.currency} />
       <div className="grid gap-6 lg:grid-cols-5">
         <Card title="Net profit per campaign" subtitle="Gross profit from conversions minus spend" className="lg:col-span-3">
-          <RankedBarChart data={chart} />
+          <RankedBarChart data={chart} currency={ds.currency} />
         </Card>
         <Card title="Channels" className="lg:col-span-2">
-          <DataTable rows={channelPerformance(campaigns).map(withChannelLabel)} columns={CHANNEL_COLUMNS} rowKey="channel" defaultSort={{ key: "spend", dir: "desc" }} />
+          <DataTable rows={channelPerformance(campaigns).map(withChannelLabel)} columns={CHANNEL_COLUMNS} rowKey="channel" defaultSort={{ key: "spend", dir: "desc" }} currency={ds.currency} />
         </Card>
       </div>
       <Card title="Campaigns" subtitle="Sorted by POAS – worst first">
-        <DataTable rows={campaigns.map(withChannelLabel)} columns={CAMPAIGN_COLUMNS} rowKey="id" defaultSort={{ key: "poas", dir: "asc" }} testId="campaigns-table" />
+        <DataTable rows={campaigns.map(withChannelLabel)} columns={CAMPAIGN_COLUMNS} rowKey="id" defaultSort={{ key: "poas", dir: "asc" }} testId="campaigns-table" currency={ds.currency} />
       </Card>
     </div>
   );

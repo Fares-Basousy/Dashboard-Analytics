@@ -15,6 +15,8 @@ export interface CredentialField {
    * outbound request URLs MUST have one – it prevents SSRF / path injection.
    */
   pattern?: string;
+  /** Accept a pasted URL ("https://shop.myshopify.com/") and keep only the host. */
+  hostOnly?: boolean;
 }
 
 export interface CredentialGroup {
@@ -50,7 +52,7 @@ export const CREDENTIAL_GROUPS = [
     description:
       "Dev Dashboard app with read_orders, read_products, read_inventory scopes, installed on the store. Use client ID + secret (current) – or a legacy custom-app token.",
     fields: [
-      { key: "SHOPIFY_STORE_DOMAIN", label: "Store domain", secret: false, placeholder: "your-store.myshopify.com", pattern: "[a-z0-9][a-z0-9\\-]*\\.myshopify\\.com" },
+      { key: "SHOPIFY_STORE_DOMAIN", label: "Store domain", secret: false, placeholder: "your-store.myshopify.com", pattern: "[a-z0-9][a-z0-9\\-]*\\.myshopify\\.com", hostOnly: true },
       { key: "SHOPIFY_CLIENT_ID", label: "Client ID (Dev Dashboard app)", secret: false, pattern: "[A-Za-z0-9]+" },
       { key: "SHOPIFY_CLIENT_SECRET", label: "Client secret", secret: true, placeholder: "shpss_…" },
       { key: "SHOPIFY_ADMIN_TOKEN", label: "Legacy Admin API token – only for apps created before 2026", secret: true, placeholder: "shpat_…" },
@@ -103,6 +105,12 @@ export const isCredentialKey = (k: string): k is CredentialKey => (ALL_CREDENTIA
 
 export function groupById(id: CredentialGroupId): CredentialGroup {
   return CREDENTIAL_GROUPS.find((g) => g.id === id)!;
+}
+
+/** Clean up a raw value (trim; reduce pasted URLs to their host) before validation and use. */
+export function normalizeCredential(field: CredentialField, raw: string): string {
+  const value = raw.trim();
+  return field.hostOnly ? value.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase() : value;
 }
 
 /** Validate a value against its field pattern (no pattern = any value). */

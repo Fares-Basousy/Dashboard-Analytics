@@ -48,6 +48,13 @@ describe("credential form parsing", () => {
     expect(parseCredentialForm(group, { [key]: value }).ok).toBe(false);
   });
 
+  it("reduces a pasted store URL to its domain", () => {
+    expect(parseCredentialForm("shopify", { SHOPIFY_STORE_DOMAIN: " https://Ersatzteilstore.myshopify.com/admin " })).toEqual({
+      ok: true,
+      updates: { SHOPIFY_STORE_DOMAIN: "ersatzteilstore.myshopify.com" },
+    });
+  });
+
   it("accepts well-formed identifiers", () => {
     expect(parseCredentialForm("shopify", { SHOPIFY_STORE_DOMAIN: "ersatzteil-store.myshopify.com" }).ok).toBe(true);
     expect(parseCredentialForm("google_ads", { GOOGLE_ADS_CUSTOMER_ID: "123-456-7890" }).ok).toBe(true);

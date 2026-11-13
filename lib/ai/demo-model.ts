@@ -6,7 +6,7 @@
 import { MockLanguageModelV4 } from "ai/test";
 import { simulateReadableStream } from "ai";
 import type { Insight } from "@/lib/domain/types";
-import { formatChf } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 
 const usage = {
   inputTokens: { total: 0, noCache: 0, cacheRead: undefined, cacheWrite: undefined },
@@ -22,11 +22,17 @@ function lastToolResult(prompt: PromptMessage[]): unknown {
   return part?.output?.value;
 }
 
-export function renderInsightsAnswer(insights: Insight[]): string {
+/** Shape returned by the `getInsights` tool. */
+export interface InsightsToolResult {
+  currency: string;
+  insights: Insight[];
+}
+
+export function renderInsightsAnswer({ currency, insights }: InsightsToolResult): string {
   if (!insights.length) return "No issues detected in this period – all campaigns and products are profitable.";
   const lines = insights
     .slice(0, 5)
-    .map((i, n) => `${n + 1}. **${i.title}** – ${i.recommendation} _(≈ ${formatChf(i.impactChf)}/month)_`);
+    .map((i, n) => `${n + 1}. **${i.title}** – ${i.recommendation} _(≈ ${formatMoney(i.impact, currency)}/month)_`);
   return [
     "_Demo mode: rule-based answer (no LLM key configured)._",
     "",
@@ -45,7 +51,7 @@ function nextStep(prompt: PromptMessage[]): DemoStep {
   const result = lastToolResult(prompt);
   return result === undefined
     ? { kind: "tool-call", toolCallId: `call-${Date.now()}`, toolName: "getInsights", input: "{}" }
-    : { kind: "text", text: renderInsightsAnswer(result as Insight[]) };
+    : { kind: "text", text: renderInsightsAnswer(result as InsightsToolResult) };
 }
 
 export function createDemoModel() {

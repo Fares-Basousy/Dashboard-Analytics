@@ -19,10 +19,10 @@ type ChannelRow = ReturnType<typeof channelPerformance>[number] & { label: strin
 
 const CHANNEL_COLUMNS: Column<ChannelRow>[] = [
   { key: "label", label: "Channel" },
-  { key: "spend", label: "Spend", format: "chf" },
+  { key: "spend", label: "Spend", format: "money" },
   { key: "roas", label: "ROAS", format: "ratio" },
   { key: "poas", label: "POAS", format: "ratio", tone: "poas" },
-  { key: "netProfit", label: "Net profit", format: "chf", tone: "signed" },
+  { key: "netProfit", label: "Net profit", format: "money", tone: "signed" },
 ];
 
 export default function OverviewPage({ searchParams }: PageProps<"/">) {
@@ -35,7 +35,7 @@ export default function OverviewPage({ searchParams }: PageProps<"/">) {
 }
 
 async function Overview({ ctx }: { ctx: PageContext }) {
-  const [ds, prev, insights] = await Promise.all([
+  const [ds, prev, { insights }] = await Promise.all([
     getDataset(ctx.range, ctx.creds),
     getDataset(ctx.previous, ctx.creds),
     getInsights(ctx.preset, ctx.today, ctx.creds),
@@ -46,7 +46,7 @@ async function Overview({ ctx }: { ctx: PageContext }) {
   return (
     <div className="space-y-6">
       <DataSourceNotice sources={ds.sources} />
-      <KpiGrid items={profitKpis(summary, summarize(prev))} />
+      <KpiGrid items={profitKpis(summary, summarize(prev))} currency={ds.currency} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Revenue, net profit & ad spend" subtitle="Daily" className="lg:col-span-2">
@@ -58,10 +58,11 @@ async function Overview({ ctx }: { ctx: PageContext }) {
               { key: "netProfit", label: "Net profit" },
               { key: "adSpend", label: "Ad spend" },
             ]}
+            currency={ds.currency}
           />
         </Card>
         <Card title="Where the money goes">
-          <ProfitBreakdown data={summary} />
+          <ProfitBreakdown data={summary} currency={ds.currency} />
         </Card>
       </div>
 
@@ -77,12 +78,12 @@ async function Overview({ ctx }: { ctx: PageContext }) {
         >
           <div className="space-y-3">
             {insights.slice(0, 3).map((i) => (
-              <InsightCard key={i.id} insight={i} compact />
+              <InsightCard key={i.id} insight={i} currency={ds.currency} compact />
             ))}
           </div>
         </Card>
         <Card title="Marketing channels" subtitle="POAS < 1 means the channel loses money">
-          <DataTable rows={channels} columns={CHANNEL_COLUMNS} rowKey="channel" defaultSort={{ key: "spend", dir: "desc" }} />
+          <DataTable rows={channels} columns={CHANNEL_COLUMNS} rowKey="channel" defaultSort={{ key: "spend", dir: "desc" }} currency={ds.currency} />
         </Card>
       </div>
     </div>

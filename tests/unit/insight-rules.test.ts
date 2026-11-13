@@ -9,7 +9,13 @@ describe("insight rules", () => {
     const loss = insights.find((i) => i.id === "campaign-loss:m-1");
     expect(loss).toBeDefined();
     expect(loss!.kind).toBe("loss");
-    expect(loss!.impactChf).toBeGreaterThan(0);
+    expect(loss!.impact).toBeGreaterThan(0);
+  });
+
+  it("writes amounts in the dataset's currency", () => {
+    const loss = detectInsights({ ...tinyDataset(), currency: "EGP" }).find((i) => i.id === "campaign-loss:m-1")!;
+    expect(loss.evidence).toContain("EGP");
+    expect(loss.evidence).not.toContain("CHF");
   });
 
   it("sorts critical findings first", () => {

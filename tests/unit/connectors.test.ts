@@ -149,6 +149,12 @@ describe("connector registry", () => {
     expect(c.fetch).not.toHaveBeenCalled();
   });
 
+  it("takes the currency from the shop source, CHF for demo data", async () => {
+    expect((await loadDataset(RANGE, {})).currency).toBe("CHF");
+    const egpShop = fake({ credentialGroup: undefined, planned: false, mock: () => ({ currency: "EGP", products: [] }) });
+    expect((await loadDataset(RANGE, {}, [egpShop])).currency).toBe("EGP");
+  });
+
   it("generates deterministic demo data", async () => {
     const [a, b] = await Promise.all([loadDataset(RANGE, {}), loadDataset(RANGE, {})]);
     expect(a.orders.length).toBeGreaterThan(0);

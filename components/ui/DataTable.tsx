@@ -22,9 +22,11 @@ interface DataTableProps<T> {
   /** Rows visible before "Show all". */
   pageSize?: number;
   testId?: string;
+  /** Currency for `money` columns. */
+  currency: string;
 }
 
-export function DataTable<T extends object>({ rows, columns, rowKey, defaultSort, pageSize = 15, testId }: DataTableProps<T>) {
+export function DataTable<T extends object>({ rows, columns, rowKey, defaultSort, pageSize = 15, testId, currency }: DataTableProps<T>) {
   const [sort, setSort] = useState(defaultSort);
   const [expanded, setExpanded] = useState(false);
 
@@ -68,7 +70,7 @@ export function DataTable<T extends object>({ rows, columns, rowKey, defaultSort
                   const tone = c.tone && typeof value === "number" ? TONE_TEXT[toneFor(c.tone, value)] : "";
                   return (
                     <td key={c.key} className={`px-5 py-2.5 ${numeric ? "text-right tabular-nums" : ""} ${tone}`}>
-                      {formatValue(c.format ?? "text", value)}
+                      {formatValue(c.format ?? "text", value, currency)}
                       {c.subKey && <div className="text-xs text-muted">{String(row[c.subKey])}</div>}
                     </td>
                   );

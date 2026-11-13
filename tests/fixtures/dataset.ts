@@ -12,6 +12,7 @@ import type { Dataset } from "@/lib/domain/types";
 export function tinyDataset(): Dataset {
   return {
     range: { from: "2026-11-01", to: "2026-11-02" },
+    currency: "CHF",
     products: [
       { sku: "A", title: "Pump", category: "Washer", price: 100, unitCost: 40 },
       { sku: "B", title: "Seal", category: "Dishwasher", price: 10, unitCost: 8 },

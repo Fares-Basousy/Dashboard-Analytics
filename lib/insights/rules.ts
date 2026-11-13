@@ -1,11 +1,11 @@
 /**
  * Proactive insight rules: pure detectors over the profit engine output.
- * Each rule returns Insights with evidence, a concrete recommendation and an estimated monthly CHF impact.
+ * Each rule returns Insights with evidence, a concrete recommendation and an estimated monthly impact (dataset currency).
  * The AI briefing (lib/ai/briefing.ts) prioritises and explains these – it never invents them.
  */
 import type { Dataset, Insight, Severity } from "@/lib/domain/types";
 import { addDays, daysBetween } from "@/lib/date-range";
-import { formatChf, formatPercent, formatRatio, round2 } from "@/lib/format";
+import { formatMoney, formatPercent, formatRatio, round2 } from "@/lib/format";
 import { campaignPerformance, categoryProfits, lossMakingOrders, productProfits } from "@/lib/profit/engine";
 
 export const THRESHOLDS = {
@@ -29,6 +29,7 @@ export function sliceDataset(ds: Dataset, from: string, to: string): Dataset {
 export function detectInsights(ds: Dataset): Insight[] {
   const days = daysBetween(ds.range);
   const monthly = (v: number) => round2((v * 30) / days);
+  const money = (v: number) => formatMoney(v, ds.currency);
   const products = productProfits(ds);
   const campaigns = campaignPerformance(ds, products).filter((c) => c.spend > 0);
   const productBySku = new Map(products.map((p) => [p.sku, p]));
@@ -45,14 +46,14 @@ export function detectInsights(ds: Dataset): Insight[] {
       kind: "loss",
       severity: impact > 1500 ? "critical" : "warning",
       title: `“${c.name}” loses money`,
-      evidence: `POAS ${formatRatio(c.poas)} (ROAS ${formatRatio(c.roas)} looks ${c.roas >= 3 ? "healthy" : "weak"}): ${formatChf(c.spend)} spend generated only ${formatChf(c.attributedProfit)} gross profit → ${formatChf(c.netProfit)}.`,
+      evidence: `POAS ${formatRatio(c.poas)} (ROAS ${formatRatio(c.roas)} looks ${c.roas >= 3 ? "healthy" : "weak"}): ${money(c.spend)} spend generated only ${money(c.attributedProfit)} gross profit → ${money(c.netProfit)}.`,
       recommendation:
         product && product.grossProfit < 0
           ? `Pause immediately – the advertised product (${product.title}) is unprofitable even before ads. Fix price/cost first.`
           : c.poas < 0.5
             ? `Pause or rebuild the campaign; reallocate the budget to campaigns with POAS > ${THRESHOLDS.scalePoas}.`
             : `Cut the budget by ~50% and switch bidding to target POAS/margin (feed profit as conversion value).`,
-      impactChf: impact,
+      impact: impact,
     });
   }
 
@@ -66,9 +67,9 @@ export function detectInsights(ds: Dataset): Insight[] {
       kind: "opportunity",
       severity: "info",
       title: `Scale “${c.name}”`,
-      evidence: `POAS ${formatRatio(c.poas)}: every CHF 1 spent returns ${formatChf(c.poas)} gross profit (${formatChf(c.netProfit)} net in period).`,
+      evidence: `POAS ${formatRatio(c.poas)}: every 1 ${ds.currency} spent returns ${c.poas.toFixed(2)} ${ds.currency} gross profit (${money(c.netProfit)} net in period).`,
       recommendation: `Increase the daily budget by 20–30% and monitor POAS weekly; stop increasing once POAS falls below ${formatRatio(THRESHOLDS.scalePoas)}.`,
-      impactChf: Math.max(impact, 0),
+      impact: Math.max(impact, 0),
     });
   }
 
@@ -80,11 +81,11 @@ export function detectInsights(ds: Dataset): Insight[] {
       id: "budget-shift",
       kind: "budget",
       severity: "warning",
-      title: `Shift ${formatChf(monthly(wasted))}/month from loss-making to profitable campaigns`,
-      evidence: `${losers.length} campaign(s) with POAS < 1 spent ${formatChf(wasted)}; best campaign “${best.name}” runs at POAS ${formatRatio(best.poas)}.`,
+      title: `Shift ${money(monthly(wasted))}/month from loss-making to profitable campaigns`,
+      evidence: `${losers.length} campaign(s) with POAS < 1 spent ${money(wasted)}; best campaign “${best.name}” runs at POAS ${formatRatio(best.poas)}.`,
       recommendation: `Move budget stepwise (25% per week) from: ${losers.map((c) => c.name).join(", ")} → to: ${winners.map((c) => c.name).join(", ")}.`,
       // Losses avoided + half the freed budget redeployed at ~50% of the median winner's efficiency.
-      impactChf: monthly(
+      impact: monthly(
         losers.reduce((s, c) => s - c.netProfit, 0) + Math.max(0, wasted * 0.5 * (winners[Math.floor(winners.length / 2)].poas * 0.5 - 1)),
       ),
     });
@@ -102,11 +103,11 @@ export function detectInsights(ds: Dataset): Insight[] {
       kind: "loss",
       severity: p.netProfit < -1000 ? "critical" : "warning",
       title: `${p.title} (${p.sku}) loses money after all costs`,
-      evidence: `Revenue ${formatChf(p.revenue)}, net ${formatChf(p.netProfit)} (margin ${formatPercent(p.margin)}). Returns ${formatPercent(p.returnRate)}, COGS ${formatChf(p.cogs)}, ad spend ${formatChf(p.adSpend)}.`,
+      evidence: `Revenue ${money(p.revenue)}, net ${money(p.netProfit)} (margin ${formatPercent(p.margin)}). Returns ${formatPercent(p.returnRate)}, COGS ${money(p.cogs)}, ad spend ${money(p.adSpend)}.`,
       recommendation: highReturns
         ? `Return rate of ${formatPercent(p.returnRate)} is the driver: check supplier quality and compatibility info on the product page; stop advertising until fixed.`
         : `Raise the price by ~${formatPercent(priceUplift)} or renegotiate purchase cost; exclude it from broad ad campaigns.`,
-      impactChf: monthly(-p.netProfit),
+      impact: monthly(-p.netProfit),
     });
   }
 
@@ -118,9 +119,9 @@ export function detectInsights(ds: Dataset): Insight[] {
       kind: "loss",
       severity: "warning",
       title: `${formatPercent(small.share)} of orders lose money before ads`,
-      evidence: `${small.count} orders (avg. ${formatChf(small.avgOrderValue)}) don't cover product cost + shipping + payment fees: ${formatChf(small.loss)} in the period.`,
-      recommendation: `Introduce a small-order surcharge (e.g. CHF 4.90 below CHF 30) or a minimum order value, and show “add a CHF 10 item for free shipping” bundles in the cart.`,
-      impactChf: monthly(-small.loss * 0.6),
+      evidence: `${small.count} orders (avg. ${money(small.avgOrderValue)}) don't cover product cost + shipping + payment fees: ${money(small.loss)} in the period.`,
+      recommendation: `Introduce a small-order surcharge or a minimum order value, and suggest low-cost add-on items in the cart to reach free shipping.`,
+      impact: monthly(-small.loss * 0.6),
     });
   }
 
@@ -136,12 +137,12 @@ export function detectInsights(ds: Dataset): Insight[] {
         kind: "trend",
         severity: "warning",
         title: `Margin erosion in ${now.category}`,
-        evidence: `Net margin fell from ${formatPercent(prev.margin)} to ${formatPercent(now.margin)} (revenue ${formatChf(prev.revenue)} → ${formatChf(now.revenue)}).`,
+        evidence: `Net margin fell from ${formatPercent(prev.margin)} to ${formatPercent(now.margin)} (revenue ${money(prev.revenue)} → ${money(now.revenue)}).`,
         recommendation: `Check recent discounts/promotions and purchase prices in ${now.category}; end promotions that don't lift volume enough to compensate.`,
-        impactChf: monthly((prev.margin - now.margin) * now.revenue * 2),
+        impact: monthly((prev.margin - now.margin) * now.revenue * 2),
       });
     }
   }
 
-  return out.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.impactChf - a.impactChf);
+  return out.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || b.impact - a.impact);
 }

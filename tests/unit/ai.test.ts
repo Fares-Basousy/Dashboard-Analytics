@@ -41,7 +41,7 @@ describe("demo model", () => {
   });
 
   it("handles a period without findings", () => {
-    expect(renderInsightsAnswer([])).toMatch(/No issues/);
+    expect(renderInsightsAnswer({ currency: "CHF", insights: [] })).toMatch(/No issues/);
   });
 });
 

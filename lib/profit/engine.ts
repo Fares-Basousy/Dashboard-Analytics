@@ -66,7 +66,9 @@ export function productProfits(ds: Dataset): ProductProfit[] {
   }
 
   // Ad spend: direct for single-SKU campaigns, revenue-share for everything else.
-  const skuOf = new Map(ds.campaigns.map((c) => [c.id, c.sku]));
+  // A campaign tagged with a SKU the catalog doesn't know (typo, deleted product, or demo ads next to
+  // a live shop) is treated as a generic campaign instead of creating a phantom product.
+  const skuOf = new Map(ds.campaigns.map((c) => [c.id, c.sku && catalog.has(c.sku) ? c.sku : undefined]));
   let shared = 0;
   for (const s of ds.adSpend) {
     const sku = skuOf.get(s.campaignId);

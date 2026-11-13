@@ -73,6 +73,8 @@ export interface SourceInfo {
 
 export interface Dataset {
   range: DateRange;
+  /** ISO 4217 code of all money values (the shop's currency). */
+  currency: string;
   products: Product[];
   orders: Order[];
   refunds: Refund[];
@@ -149,6 +151,6 @@ export interface Insight {
   title: string;
   evidence: string;
   recommendation: string;
-  /** Estimated monthly profit impact in CHF if the recommendation is applied. */
-  impactChf: number;
+  /** Estimated monthly profit impact (dataset currency) if the recommendation is applied. */
+  impact: number;
 }

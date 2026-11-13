@@ -5,7 +5,7 @@ import { loadDataset } from "@/lib/connectors/registry";
 import { envCredentials } from "@/lib/credentials/store";
 import { detectInsights } from "@/lib/insights/rules";
 import { DEFAULT_PRESET, presetRange, toISODate } from "@/lib/date-range";
-import { formatChf } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 
 /**
  * Proactive monitoring loop (Vercel Cron, see vercel.json):
@@ -18,14 +18,15 @@ export async function GET(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const insights = detectInsights(await loadDataset(presetRange(DEFAULT_PRESET, toISODate(new Date())), envCredentials()));
+  const ds = await loadDataset(presetRange(DEFAULT_PRESET, toISODate(new Date())), envCredentials());
+  const insights = detectInsights(ds);
   revalidateTag(DATASET_TAG, "max");
   revalidateTag(INSIGHTS_TAG, "max");
 
   const critical = insights.filter((i) => i.severity === "critical");
   const webhook = process.env.SLACK_WEBHOOK_URL;
   if (webhook && critical.length) {
-    const text = [`*Profit alert: ${critical.length} critical finding(s)*`, ...critical.map((i) => `• ${i.title} – ${i.recommendation} (≈ ${formatChf(i.impactChf)}/month)`)].join("\n");
+    const text = [`*Profit alert: ${critical.length} critical finding(s)*`, ...critical.map((i) => `• ${i.title} – ${i.recommendation} (≈ ${formatMoney(i.impact, ds.currency)}/month)`)].join("\n");
     await fetch(webhook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }).catch((e) =>
       console.error("[cron] slack", e),
     );

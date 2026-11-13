@@ -1,6 +1,7 @@
 import type { Dataset, DateRange, SourceInfo } from "@/lib/domain/types";
 import type { Connector, DatasetSlice } from "./types";
 import { isGroupConfigured, type Credentials } from "@/lib/credentials/fields";
+import { DEFAULT_CURRENCY } from "@/lib/format";
 import { shopify } from "./shopify";
 import { googleAds } from "./google-ads";
 import { meta } from "./meta";
@@ -42,7 +43,9 @@ async function loadSlice(c: Connector, range: DateRange, creds: Credentials): Pr
 /** Fetch all sources in parallel and merge them into one Dataset. Uncached; see `lib/data/dataset.ts`. */
 export async function loadDataset(range: DateRange, creds: Credentials, connectors: Connector[] = CONNECTORS): Promise<Dataset> {
   const results = await Promise.all(connectors.map((c) => loadSlice(c, range, creds)));
-  const merged: Dataset = { range, products: [], orders: [], refunds: [], campaigns: [], adSpend: [], sources: [] };
+  const merged: Dataset = { range, currency: DEFAULT_CURRENCY, products: [], orders: [], refunds: [], campaigns: [], adSpend: [], sources: [] };
+  // The first source that reports a currency (the shop) defines it for the whole dataset.
+  merged.currency = results.find((r) => r.slice.currency)?.slice.currency ?? DEFAULT_CURRENCY;
   for (const { slice, info } of results) {
     merged.products.push(...(slice.products ?? []));
     merged.orders.push(...(slice.orders ?? []));

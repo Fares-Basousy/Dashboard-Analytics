@@ -23,13 +23,13 @@ function Delta({ kpi }: { kpi: Kpi }) {
   );
 }
 
-export function KpiGrid({ items }: { items: Kpi[] }) {
+export function KpiGrid({ items, currency }: { items: Kpi[]; currency: string }) {
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
       {items.map((kpi) => (
         <div key={kpi.label} className="rounded-xl border border-border bg-surface p-4" data-testid="kpi">
           <p className="text-xs font-medium text-muted">{kpi.label}</p>
-          <p className="mt-1.5 text-xl font-semibold tabular-nums">{formatValue(kpi.format, kpi.value)}</p>
+          <p className="mt-1.5 text-xl font-semibold tabular-nums">{formatValue(kpi.format, kpi.value, currency)}</p>
           <div className="mt-1 flex items-center gap-2">
             <Delta kpi={kpi} />
             {kpi.hint && <span className="text-xs text-muted">{kpi.hint}</span>}

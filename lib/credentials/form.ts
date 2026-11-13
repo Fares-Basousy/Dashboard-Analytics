@@ -1,4 +1,4 @@
-import { groupById, matchesPattern, type CredentialGroupId, type Credentials, type CredentialKey } from "./fields";
+import { groupById, matchesPattern, normalizeCredential, type CredentialGroupId, type Credentials, type CredentialKey } from "./fields";
 
 const MAX_LENGTH = 4096;
 
@@ -18,7 +18,7 @@ export function parseCredentialForm(groupId: CredentialGroupId, entries: Record<
       updates[key] = "";
       continue;
     }
-    const value = entries[key]?.trim() ?? "";
+    const value = normalizeCredential(field, entries[key] ?? "");
     if (!value) continue;
     if (value.length > MAX_LENGTH) return { ok: false, error: `${field.label} is too long.` };
     if (field.secret && /\s/.test(value)) return { ok: false, error: `${field.label} must not contain spaces.` };

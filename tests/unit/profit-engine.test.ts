@@ -59,6 +59,14 @@ describe("profit engine", () => {
     expect(res.loss).toBeCloseTo(10 - 8 - 10 - 1);
   });
 
+  it("spreads spend of campaigns tagged with an unknown SKU instead of creating a phantom product", () => {
+    const ds2 = tinyDataset();
+    ds2.campaigns[0].sku = "DOES-NOT-EXIST";
+    const products = productProfits(ds2);
+    expect(products.map((p) => p.sku).sort()).toEqual(["A", "B"]);
+    expect(products.reduce((s, p) => s + p.adSpend, 0)).toBeCloseTo(80, 2);
+  });
+
   it("gives free items no share of order costs", () => {
     const ds2 = tinyDataset();
     ds2.orders[1].lines.push({ sku: "B", qty: 1, unitPrice: 10, discount: 10 }); // free gift in o2

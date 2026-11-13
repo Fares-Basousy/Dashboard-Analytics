@@ -15,6 +15,7 @@ function fakeShopify() {
     calls.push({ url, init });
     if (url.endsWith("/admin/oauth/access_token")) return json({ access_token: "tok-1", scope: "read_orders,read_products,read_inventory", expires_in: 86399 });
     const { query, variables } = JSON.parse(String(init?.body));
+    if (query.includes("shop {")) return json({ data: { shop: { currencyCode: "EGP" } } });
     if (query.includes("productVariants")) {
       return json({ data: { productVariants: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: "gid://shopify/ProductVariant/1", sku: "P-1", title: "Default Title", price: "50.00", product: { title: "Pump", productType: "Washer" }, inventoryItem: { unitCost: { amount: "20.00" } } }] } } });
     }
@@ -68,6 +69,7 @@ describe("Shopify access token", () => {
     const slice = await shopify.fetch({ from: "2026-11-01", to: "2026-11-02" }, CLIENT);
     expect(slice.products).toEqual([{ sku: "P-1", title: "Pump", category: "Washer", price: 50, unitCost: 20 }]);
     expect(slice.orders?.map((o) => o.id)).toEqual(["1", "2"]);
+    expect(slice.currency).toBe("EGP");
 
     const graphql = fake.calls.filter((c) => c.url.endsWith("/graphql.json"));
     expect(graphql[0].url).toBe(`https://${DOMAIN}/admin/api/2026-10/graphql.json`);

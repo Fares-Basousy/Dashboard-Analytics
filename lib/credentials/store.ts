@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { ALL_CREDENTIAL_KEYS, type CredentialKey, type Credentials, type CredentialSource, isCredentialKey } from "./fields";
+import { ALL_CREDENTIAL_KEYS, ALL_FIELDS, normalizeCredential, type CredentialKey, type Credentials, type CredentialSource, isCredentialKey } from "./fields";
 import { seal, unseal } from "./crypto";
 
 const COOKIE_NAME = "pd_credentials";
@@ -10,7 +10,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 export function envCredentials(): Credentials {
   const out: Credentials = {};
   for (const k of ALL_CREDENTIAL_KEYS) {
-    const v = process.env[k]?.trim();
+    const v = normalizeCredential(ALL_FIELDS[k], process.env[k] ?? "");
     if (v) out[k] = v;
   }
   return out;

@@ -1,7 +1,7 @@
 import { convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from "ai";
 import { getDataset } from "@/lib/data/dataset";
 import { getCredentials } from "@/lib/credentials/store";
-import { DEFAULT_PRESET, isPreset, toISODate } from "@/lib/date-range";
+import { DEFAULT_PRESET, isPreset, presetRange, toISODate } from "@/lib/date-range";
 import { getModel } from "@/lib/ai/provider";
 import { createTools, systemPrompt } from "@/lib/ai/tools";
 
@@ -20,9 +20,12 @@ export async function POST(req: Request) {
     defaultPreset: isPreset(preset) ? preset : DEFAULT_PRESET,
   };
 
+  // Cached – also warms the data the tools will read.
+  const { currency } = await ctx.load(presetRange(ctx.defaultPreset, ctx.today));
+
   const result = streamText({
     model: getModel(creds).model,
-    system: systemPrompt(ctx),
+    system: systemPrompt(ctx, currency),
     messages: await convertToModelMessages(messages),
     tools: createTools(ctx),
     stopWhen: isStepCount(MAX_TOOL_STEPS),

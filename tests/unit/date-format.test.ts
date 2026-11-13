@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { daysBetween, eachDay, isPreset, presetRange, previousRange } from "@/lib/date-range";
-import { formatChf, formatRatio, formatValue, safeDiv } from "@/lib/format";
+import { formatMoney, formatRatio, formatValue, safeDiv } from "@/lib/format";
 import { toneFor } from "@/lib/tone";
 
 describe("date ranges", () => {
@@ -21,7 +21,9 @@ describe("date ranges", () => {
 
 describe("formatting & tones", () => {
   it("formats money with a leading minus", () => {
-    expect(formatChf(-915)).toMatch(/^−CHF/);
+    expect(formatMoney(-915)).toMatch(/^−CHF/);
+    expect(formatMoney(1234, "EGP")).toMatch(/^EGP/);
+    expect(formatValue("money", 10, "EUR")).toMatch(/€|EUR/);
     expect(formatValue("ratio", 2)).toBe(formatRatio(2));
     expect(formatValue("text", undefined)).toBe("–");
   });

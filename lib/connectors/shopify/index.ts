@@ -16,6 +16,8 @@ const VARIANTS_QUERY = `query($cursor: String) {
   }
 }`;
 
+const SHOP_QUERY = `{ shop { currencyCode } }`;
+
 const ORDERS_QUERY = `query($cursor: String, $q: String) {
   orders(first: 100, after: $cursor, query: $q) {
     pageInfo { hasNextPage endCursor }
@@ -32,9 +34,11 @@ const ORDERS_QUERY = `query($cursor: String, $q: String) {
 type Page<T> = { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: T[] };
 type GraphQLResponse<T> = { data?: Record<string, Page<T>>; errors?: unknown };
 
+const graphqlUrl = (creds: Credentials) => `https://${requireCredential(creds, "SHOPIFY_STORE_DOMAIN")}/admin/api/${API_VERSION}/graphql.json`;
+
 /** Follow Shopify cursor pagination for one top-level connection. */
 async function paginate<T>(creds: Credentials, token: string, query: string, key: string, variables: Record<string, unknown> = {}): Promise<T[]> {
-  const url = `https://${requireCredential(creds, "SHOPIFY_STORE_DOMAIN")}/admin/api/${API_VERSION}/graphql.json`;
+  const url = graphqlUrl(creds);
   const headers = { "Content-Type": "application/json", "X-Shopify-Access-Token": token };
   const out: T[] = [];
   let cursor: string | null = null;
@@ -49,6 +53,17 @@ async function paginate<T>(creds: Credentials, token: string, query: string, key
   return out;
 }
 
+/** The store's currency (all `shopMoney` amounts are in it). */
+async function shopCurrency(creds: Credentials, token: string): Promise<string> {
+  const res: { data?: { shop: { currencyCode: string } }; errors?: unknown } = await fetchJson(graphqlUrl(creds), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+    body: JSON.stringify({ query: SHOP_QUERY }),
+  });
+  if (res.errors || !res.data) throw new Error(`Shopify GraphQL: ${JSON.stringify(res.errors).slice(0, 300)}`);
+  return res.data.shop.currencyCode;
+}
+
 export const shopify: Connector = {
   id: "shopify",
   name: "Shopify",
@@ -56,13 +71,15 @@ export const shopify: Connector = {
   credentialGroup: "shopify",
   async fetch(range, creds) {
     const token = await getShopifyAccessToken(creds);
-    const [variants, orderNodes] = await Promise.all([
+    const [currency, variants, orderNodes] = await Promise.all([
+      shopCurrency(creds, token),
       paginate<ShopifyVariantNode>(creds, token, VARIANTS_QUERY, "productVariants"),
       paginate<ShopifyOrderNode>(creds, token, ORDERS_QUERY, "orders", { q: `created_at:>=${range.from} created_at:<=${range.to}T23:59:59` }),
     ]);
     const cost = costConfig();
     const mapped = orderNodes.map((o) => mapOrder(o, cost));
     return {
+      currency,
       products: variants.map(mapVariant),
       orders: mapped.map((m) => m.order),
       // Refunds of orders created in the range (Shopify ties refunds to orders).

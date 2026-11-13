@@ -14,11 +14,12 @@ interface TrendChartProps<T> {
   xKey: keyof T & string;
   series: Series<T>[];
   format?: ValueFormat;
+  currency: string;
   height?: number;
 }
 
 /** Time series as overlaid areas (e.g. revenue vs. net profit vs. ad spend). */
-export function TrendChart<T extends object>({ data, xKey, series, format = "chf", height = 280 }: TrendChartProps<T>) {
+export function TrendChart<T extends object>({ data, xKey, series, format = "money", currency, height = 280 }: TrendChartProps<T>) {
   // Recharts types keys against its own data shape; our keys are already checked against T above.
   const rows = data as unknown as Record<string, unknown>[];
   return (
@@ -35,7 +36,7 @@ export function TrendChart<T extends object>({ data, xKey, series, format = "chf
         <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey={xKey as string} {...axisProps} tickFormatter={(d: string) => d.slice(5)} minTickGap={24} />
         <YAxis {...axisProps} tickFormatter={compactNumber} width={44} />
-        <Tooltip {...tooltipProps} formatter={(v) => formatValue(format, Number(v))} />
+        <Tooltip {...tooltipProps} formatter={(v) => formatValue(format, Number(v), currency)} />
         <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
         {series.map((s, i) => (
           <Area

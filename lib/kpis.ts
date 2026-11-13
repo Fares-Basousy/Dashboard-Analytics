@@ -6,10 +6,10 @@ import { safeDiv } from "@/lib/format";
 
 export function profitKpis(now: Summary, prev: Summary): Kpi[] {
   return [
-    { label: "Revenue", value: now.revenue, previous: prev.revenue, format: "chf" },
-    { label: "Net profit", value: now.netProfit, previous: prev.netProfit, format: "chf", hint: "after all costs" },
+    { label: "Revenue", value: now.revenue, previous: prev.revenue, format: "money" },
+    { label: "Net profit", value: now.netProfit, previous: prev.netProfit, format: "money", hint: "after all costs" },
     { label: "Net margin", value: now.margin, previous: prev.margin, format: "percent" },
-    { label: "Ad spend", value: now.adSpend, previous: prev.adSpend, format: "chf", lowerIsBetter: true },
+    { label: "Ad spend", value: now.adSpend, previous: prev.adSpend, format: "money", lowerIsBetter: true },
     { label: "POAS", value: now.poas, previous: prev.poas, format: "ratio", hint: "profit / ad spend" },
     { label: "Return rate", value: now.returnRate, previous: prev.returnRate, format: "percent", lowerIsBetter: true },
   ];
@@ -26,11 +26,11 @@ export function marketingKpis(now: CampaignPerformance[], prev: CampaignPerforma
   const a = agg(now);
   const b = agg(prev);
   return [
-    { label: "Ad spend", value: a.spend, previous: b.spend, format: "chf", lowerIsBetter: true },
-    { label: "Ad revenue (platform)", value: a.revenue, previous: b.revenue, format: "chf" },
+    { label: "Ad spend", value: a.spend, previous: b.spend, format: "money", lowerIsBetter: true },
+    { label: "Ad revenue (platform)", value: a.revenue, previous: b.revenue, format: "money" },
     { label: "ROAS", value: a.roas, previous: b.roas, format: "ratio" },
     { label: "POAS", value: a.poas, previous: b.poas, format: "ratio", hint: "the real one" },
-    { label: "Net profit from ads", value: a.net, previous: b.net, format: "chf" },
-    { label: "Spend with POAS < 1", value: a.wasted, previous: b.wasted, format: "chf", lowerIsBetter: true },
+    { label: "Net profit from ads", value: a.net, previous: b.net, format: "money" },
+    { label: "Spend with POAS < 1", value: a.wasted, previous: b.wasted, format: "money", lowerIsBetter: true },
   ];
 }

@@ -1,8 +1,8 @@
 import type { Dataset, DateRange } from "@/lib/domain/types";
 import type { CredentialGroupId, Credentials } from "@/lib/credentials/fields";
 
-/** The data a connector contributes. Each source fills only the slices it owns. */
-export type DatasetSlice = Partial<Pick<Dataset, "products" | "orders" | "refunds" | "campaigns" | "adSpend">>;
+/** The data a connector contributes. Each source fills only the slices it owns; the shop source sets `currency`. */
+export type DatasetSlice = Partial<Pick<Dataset, "products" | "orders" | "refunds" | "campaigns" | "adSpend" | "currency">>;
 
 /**
  * Contract for every data source. Adding a source = implement this + register it in `registry.ts`.
