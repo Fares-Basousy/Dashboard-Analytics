@@ -1,42 +1,45 @@
 import { Card } from "@/components/ui/Card";
 import { CREDENTIAL_COOKIE_DAYS } from "@/lib/credentials/store";
+import { getI18n } from "@/lib/i18n/page";
+import type { MessageKey } from "@/lib/i18n/messages/en";
 
-const WITHOUT_KEYS = [
-  ["Data sources", "Every source without keys shows realistic demo data for a spare-parts shop. Pages say which sources are demo, and you can mix: connect Shopify and keep the ads on demo data."],
-  ["AI assistant", "Without an AI key, the chat runs in a rule-based demo mode. It still analyses the data through the same tools and answers with real findings, just without an AI model writing the text."],
-  ["Failures", "If a connected source's API fails, that source falls back to demo data and a warning banner appears. The dashboard never goes down because of one source."],
-] as const;
+type Point = readonly [term: MessageKey, text: MessageKey];
 
-const STORAGE = [
-  ["Encrypted", "Keys are encrypted with AES-256-GCM before they leave the server. The stored value is useless without the server's secret."],
-  ["httpOnly cookie", `They are saved in one cookie that JavaScript cannot read, sent only to this site (sameSite), only over HTTPS in production, and kept for ${CREDENTIAL_COOKIE_DAYS} days.`],
-  ["Never shown again", "Keys are decrypted only on the server, to call the APIs. This page only shows where a key comes from (browser, server or not set), never its value."],
-  ["Your browser only", "Saved keys belong to this browser. Other visitors don't see or use them. Keys set by the site owner on the server are used when the browser has none."],
-  ["Remove anytime", "Use “Remove” on a card, or “Forget all keys” below, to delete them immediately."],
-] as const;
+const WITHOUT_KEYS: Point[] = [
+  ["explainer.dataSources", "explainer.dataSourcesText"],
+  ["explainer.ai", "explainer.aiText"],
+  ["explainer.failures", "explainer.failuresText"],
+  ["explainer.translations", "explainer.translationsText"],
+];
 
-function Points({ items }: { items: readonly (readonly [string, string])[] }) {
-  return (
+const STORAGE: Point[] = [
+  ["explainer.encrypted", "explainer.encryptedText"],
+  ["explainer.cookie", "explainer.cookieText"],
+  ["explainer.never", "explainer.neverText"],
+  ["explainer.browser", "explainer.browserText"],
+  ["explainer.remove", "explainer.removeText"],
+];
+
+/** Plain-language explanation of demo mode, key storage and languages, shown on the settings page. */
+export async function KeysExplainer() {
+  const { t } = await getI18n();
+  const points = (items: Point[]) => (
     <dl className="space-y-3">
       {items.map(([term, text]) => (
         <div key={term}>
-          <dt className="text-sm font-medium">{term}</dt>
-          <dd className="text-sm text-muted">{text}</dd>
+          <dt className="text-sm font-medium">{t(term)}</dt>
+          <dd className="text-sm text-muted">{t(text, { days: CREDENTIAL_COOKIE_DAYS })}</dd>
         </div>
       ))}
     </dl>
   );
-}
-
-/** Plain-language explanation of demo mode and key storage, shown on the settings page. */
-export function KeysExplainer() {
   return (
     <div id="how-it-works" className="grid scroll-mt-6 gap-6 lg:grid-cols-2">
-      <Card title="Works without any keys" subtitle="Try everything first, connect later.">
-        <Points items={WITHOUT_KEYS} />
+      <Card title={t("explainer.withoutTitle")} subtitle={t("explainer.withoutSubtitle")}>
+        {points(WITHOUT_KEYS)}
       </Card>
-      <Card title="How your keys are stored" subtitle="Security by design.">
-        <Points items={STORAGE} />
+      <Card title={t("explainer.storedTitle")} subtitle={t("explainer.storedSubtitle")}>
+        {points(STORAGE)}
       </Card>
     </div>
   );

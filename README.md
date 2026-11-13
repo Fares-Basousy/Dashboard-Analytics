@@ -24,6 +24,7 @@ spare-parts store), and a missing AI key falls back to a rule-based assistant. A
 4. [Configuration](#configuration)
 5. [Connecting data sources and the AI](#connecting-data-sources-and-the-ai)
 6. [How it works](#how-it-works)
+   - [Languages (English, Swedish, German)](#languages-english-swedish-german)
 7. [Project structure](#project-structure)
 8. [Testing](#testing)
 9. [Deployment (Vercel)](#deployment-vercel)
@@ -43,10 +44,11 @@ spare-parts store), and a missing AI key falls back to a rule-based assistant. A
 | **Marketing** | Channels and campaigns judged by **POAS** (profit on ad spend), not only ROAS (revenue on ad spend). Loss-making campaigns are highlighted. |
 | **AI Insights** | Automatically detected money leaks and opportunities, each with evidence, a recommendation and its estimated monthly impact, plus an AI-written executive briefing. |
 | **AI Assistant** | A chat drawer on every page. It answers from live data using the same calculations as the pages, and shows the model's reasoning. |
-| **Connections & Keys** | Connect sources and the AI model from the UI, and see each source's status (connected / demo data / planned). |
+| **Connections & Keys** | Connect sources and the AI model from the UI, see each source's status (connected / demo data / planned), and fill a Shopify dev store with test data from a button, with live progress notifications. |
 
 Also included:
 
+- **Three languages:** English, Swedish and German, switched from the nav bar. The page, the AI chat, the AI briefing and the insight texts follow the chosen language. Texts that have no translation yet are translated by the AI automatically. See [Languages](#languages-english-swedish-german).
 - **Period selector:** last 7, 30 or 90 days, kept while you move between pages.
 - **Proactive monitoring:** a daily job (Vercel Cron) re-pulls all data, refreshes the insights, and can post critical findings to Slack.
 - **Shop currency:** money is shown in the shop's own currency, read from Shopify.
@@ -60,6 +62,7 @@ Also included:
 | Styling | Tailwind CSS 4 (design tokens, light and dark mode) |
 | AI | Vercel AI SDK v7, provider-agnostic. Default model: NVIDIA `nemotron-3.5-super-vl-120b-a12b`; Anthropic, OpenAI and the Vercel AI Gateway also work |
 | Charts | Recharts |
+| Languages | Next.js `[lang]` routing + `next/root-params` + `proxy.ts`, typed dictionaries, AI fallback for missing translations (no i18n library) |
 | Validation | Zod |
 | Tests | Vitest (unit), Playwright (end-to-end) |
 | Hosting | Vercel (with Vercel Cron) |
@@ -71,7 +74,7 @@ Also included:
 ```bash
 pnpm install
 cp .env.example .env.local   # optional: everything has a fallback
-pnpm dev                     # open http://localhost:3000
+pnpm dev                     # open http://localhost:3000 (redirects to /en, /sv or /de)
 ```
 
 Without any configuration you'll see the demo shop and the rule-based assistant. To use real data, add
@@ -85,7 +88,7 @@ keys in `.env.local` or on the **Connections & Keys** page. See [Configuration](
 | `pnpm test:e2e` | End-to-end tests (Playwright) against a production build |
 | `pnpm lint` / `pnpm typecheck` | ESLint / TypeScript |
 | `pnpm check` | Lint, typecheck and unit tests together |
-| `pnpm seed:shopify` | Fill a Shopify **dev** store with test products, orders and refunds (see [Shopify](#shopify)) |
+| `pnpm seed:shopify` | Fill a Shopify **dev** store with test products, orders and refunds; the same as the button in Settings (see [Shopify](#shopify)). Never runs on install or deploy. |
 
 ## Configuration
 
@@ -127,21 +130,32 @@ ID and secret for an access token that lasts 24 hours. Profit Pilot fetches and 
 automatically (`lib/connectors/shopify/auth.ts`).
 
 1. On [dev.shopify.com](https://dev.shopify.com), create a **dev store** (it must be in the same organization as the app).
-2. Add products with a **Price** and a **Cost per item** (Pricing section), and create some orders, e.g. draft orders marked as paid. Refund one or two.
-3. Create an app with the scopes `read_orders`, `read_products` and `read_inventory`, **release** a version, and **install** it on the store.
+2. Add products with a **Price** and a **Cost per item** (Pricing section), and create some orders, e.g. draft orders marked as paid. Refund one or two. Or let the [test-data seed](#filling-a-dev-store-with-test-data) do all of this.
+3. Create an app with the scopes `read_orders`, `read_products` and `read_inventory` (plus `write_products` and `write_orders` while you use the seed), **release** a version, and **install** it on the store.
 4. Copy the **Client ID** and **Client secret** from the app's Settings into `.env.local` or **Connections & Keys**, along with the store domain.
 
 Products without a SKU are identified by their Shopify variant ID. Shops whose prices include tax
-(common in Switzerland and the EU) are handled: the VAT inside the price is never counted as revenue.
+(common in Switzerland and the EU) are handled: the VAT inside sale prices and refunds is never counted as
+revenue. Orders are dated by `processedAt`, the business date, which is also correct for imported orders.
 
 #### Filling a dev store with test data
 
-`pnpm seed:shopify [--orders 40] [--days 30]` (`scripts/seed-shopify.ts`) creates the demo spare-parts
-catalogue (SKUs and cost per item), orders with Swiss VAT included spread over the last N days, and refunds
-(high-return products are refunded more often). It needs the extra scopes `write_products` and `write_orders`,
-**refuses to run against anything but a development store**, and reuses products that already exist. Dev
-stores accept at most 5 new orders per minute, so the script paces itself (about 13 seconds per order). Remove the write
-scopes again afterwards: the dashboard itself only reads.
+The seed creates the demo spare-parts catalogue (SKUs and cost per item), orders with Swiss VAT included,
+spread over the last 30 days, and refunds (high-return products are refunded more often). It runs **only
+when you start it**, never on install or deploy. There are two ways to start it:
+
+- **Button:** **Connections & Keys → Test data → Generate test data** (5, 10 or 15 orders). A notification in
+  the bottom-left corner shows the status: *Pending* (checking the store, preparing products), *Seeding x/y*
+  (orders being created), then *Done* or *Seeding failed* with the reason. The dashboard refreshes when it's done.
+- **CLI:** `pnpm seed:shopify [--orders 15] [--days 30]` with the Shopify variables in `.env.local`. Use this for larger runs.
+
+How it works: `lib/seed/shopify-seed.ts` holds the logic and reports progress events. `POST /api/seed` streams
+them as NDJSON (one JSON object per line) to the button. `scripts/seed-shopify.ts` prints them.
+
+Rules: it needs the extra app scopes `write_products` and `write_orders`, **refuses any store that isn't a
+development store**, reuses products that already exist, and runs one seed at a time. Dev stores accept at most
+5 new orders per minute, so orders are paced (about 13 seconds each), and a button run is capped at 15 orders to fit
+the 300-second serverless limit. Remove the write scopes when you're done: the dashboard itself only reads.
 
 ### Google Ads
 
@@ -222,6 +236,35 @@ The chat (`app/api/chat/route.ts`) streams answers and runs a tool loop of up to
 Without an AI key, a built-in **demo model** (`lib/ai/demo-model.ts`) runs the same tool loop and answers
 from the insight rules. The chat always works, and the end-to-end tests are deterministic.
 
+### Languages (English, Swedish, German)
+
+Pick a language in the nav bar (**EN / SV / DE**). You stay on the same page and period, and the choice is remembered.
+
+**URLs.** Every page has a language prefix: `/en/products`, `/sv/products`, `/de/products`. All three are
+prerendered. A URL without a language (`/`, `/products`) is redirected by `proxy.ts`: to the language
+you last picked (`NEXT_LOCALE` cookie), otherwise to your browser's language (`Accept-Language`),
+otherwise English. Unsupported languages return 404.
+
+**Texts.** All UI text lives in typed dictionaries in `lib/i18n/messages/`:
+- `en.ts` is the source of truth. Every text has a key, e.g. `"nav.products": "Products"`.
+- `sv.ts` and `de.ts` hold hand-written translations of those keys.
+- Names and numbers are never part of a text. They sit in `{placeholders}` (e.g. `"„{name}“ verliert Geld"`) and are filled in at the end.
+
+**AI translation of missing texts.** If a key has no Swedish or German translation (for example, a text
+added later), the AI translates it automatically (`lib/i18n/resolve.ts` and `ai-translate.ts`):
+1. All missing English texts for that language are sent to the AI model **in one batch**, with instructions to keep `{placeholders}` and not to translate names, currency codes or metrics (POAS, ROAS, COGS, SKU).
+2. A translation is only accepted if it is non-empty and has **exactly the same placeholders** as the English text. Otherwise the English text is used, so a bad translation can never break a sentence or alter a name.
+3. The result is cached for days and shared by all pages and visitors. The AI is called once per language, not per visit.
+4. Without an AI key (or if the AI fails), missing texts are shown in English. The app never breaks.
+
+Product, campaign, category and shop names come from the data and are always shown as they are.
+
+**What follows the language:**
+- **Pages, tables, charts, KPIs, the settings form and server messages:** these come from the dictionaries.
+- **Insight titles, evidence and recommendations:** the rules write them from dictionary templates, with names and numbers as placeholders.
+- **AI chat and executive briefing:** the model is told to answer in the selected language. The offline demo assistant uses the dictionaries.
+- **Seeding notifications:** the progress events carry data, and the browser words them in the selected language.
+
 ### Caching and proactive monitoring
 
 - Data and insights are cached for hours, per period and set of credentials.
@@ -238,14 +281,19 @@ from the insight rules. The chat always works, and the end-to-end tests are dete
 ## Project structure
 
 ```
+proxy.ts                  redirects URLs without a language to /en, /sv or /de
 app/
-  (dashboard)/            pages: overview, products, marketing, insights, settings (+ Server Action)
+  [lang]/layout.tsx       root layout: <html lang>, prerenders en/sv/de, provides texts to client components
+  [lang]/(dashboard)/     pages: overview, products, marketing, insights, settings (+ Server Action)
   api/chat/               streaming AI chat
   api/insights/cron/      daily proactive job
+  api/seed/               streams Shopify test-data seeding progress
 components/
   ui/                     Card, KpiGrid, DataTable, Badge, PageHeader, Skeleton
   charts/                 TrendChart, RankedBarChart, shared chart theme
-  ChatPanel, CredentialForm, InsightCard, ProfitBreakdown, DataSourceNotice, PageData, Sidebar, DateRangePicker
+  ui/Toast                notification used for seeding progress
+  I18nProvider, LanguageSwitcher   texts for client components, EN/SV/DE switch in the nav
+  ChatPanel, CredentialForm, SeedPanel, KeysExplainer, InsightCard, ProfitBreakdown, DataSourceNotice, PageData, Sidebar, DateRangePicker
 lib/
   domain/types.ts         the shared schema
   connectors/             Connector interface, registry, shopify/, google-ads/, meta/
@@ -255,7 +303,12 @@ lib/
   ai/                     provider switch, NVIDIA setup, tools, briefing, demo model
   credentials/            field registry, encrypted cookie store, form validation
   mock/seed.ts            deterministic demo shop
+  seed/shopify-seed.ts    fills a Shopify dev store with test data (button + CLI); seed/messages.ts words its events
+  i18n/                   languages: config, messages/{en,sv,de}.ts, translator, AI fallback (resolve.ts, ai-translate.ts),
+                          server.ts (cached texts per language), page.ts (current language via next/root-params)
   format.ts, date-range.ts, tone.ts, kpis.ts, config.ts, …
+scripts/
+  seed-shopify.ts         CLI for the Shopify test-data seed
 tests/
   unit/                   Vitest
   e2e/                    Playwright
@@ -269,8 +322,8 @@ pnpm test        # unit tests
 pnpm test:e2e    # end-to-end (builds and starts the app on port 3300)
 ```
 
-- **Unit (Vitest):** the profit engine against a hand-calculated example; insight rules, including the problems planted in the demo shop; every connector mapper (Shopify, Google Ads, Meta) against API-shaped fixtures; Shopify token exchange, token caching and pagination; the registry's fallback and error behaviour; cookie encryption; form validation (including SSRF attempts); `.env.example` completeness; AI tools returning engine numbers; the demo model's tool loop; provider selection; the exact NVIDIA request format.
-- **End-to-end (Playwright):** navigation, switching periods, table sorting, the AI chat, and storing keys (the cookie is httpOnly, encrypted, and never sent back to the page).
+- **Unit (Vitest):** the profit engine against a hand-calculated example; insight rules, including the problems planted in the demo shop; every connector mapper (Shopify, Google Ads, Meta) against API-shaped fixtures; Shopify token exchange, token caching and pagination; the registry's fallback and error behaviour; cookie encryption; form validation (including SSRF attempts); `.env.example` completeness; AI tools returning engine numbers; the demo model's tool loop; provider selection; the exact NVIDIA request format; VAT removal on sales and refunds; the Shopify seed (dev-store guard, missing scopes, progress events, VAT-inclusive backdated orders, reuse of existing products, stopping when cancelled); languages (every Swedish and German text keeps the English placeholders, AI fallback accepted only with intact placeholders, English fallback when the AI fails, browser-language and cookie selection, insights translated while names stay unchanged).
+- **End-to-end (Playwright):** navigation, switching periods, table sorting, the AI chat, storing keys (the cookie is httpOnly, encrypted, and never sent back to the page), the test-data button and API (disabled without Shopify, input validation, a clean error stream), and languages (browser-language redirect, switching in the nav while keeping the page and period, the remembered choice, the AI answering in German, translated server messages, 404 for unsupported languages).
 - E2E tests clear all credentials, so they always run on demo data, even with a local `.env.local`.
 
 ## Deployment (Vercel)
@@ -288,6 +341,7 @@ Environment variables only apply to new deployments, so redeploy after changing 
 - **SSRF protection:** values that end up in request URLs (Shopify domain, Google and Meta account IDs) are format-checked, in the form and again before every request. SSRF means tricking the server into calling an address it shouldn't.
 - **CSRF protection** for Server Actions comes from Next.js origin checks.
 - **Cron endpoint** is protected by `CRON_SECRET`.
+- **Test-data seeding** only writes to Shopify **development** stores (checked through the API before any write), needs explicit write scopes, validates its input, and runs one seed at a time.
 
 ## Extending the system
 
@@ -303,6 +357,13 @@ appears on the Insights page, in the AI's `getInsights` tool, and in the cron al
 
 **Add an AI tool:** add it to `createTools` in `lib/ai/tools.ts`, wrapping an engine function.
 
+**Add or change a text:** add the key to `lib/i18n/messages/en.ts` and use `t("your.key")`. Add the
+Swedish and German texts to `sv.ts` and `de.ts`. If you don't, the AI translates them on first use. A unit
+test checks that every translation keeps the English `{placeholders}`.
+
+**Add a language** (e.g. French): add `"fr"` to `LOCALES` (and its names) in `lib/i18n/config.ts`, create
+`messages/fr.ts` (it can start empty; the AI fills it), and register it in `lib/i18n/server.ts`.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
@@ -314,6 +375,7 @@ appears on the Insights page, in the AI's `getInsights` tool, and in the cron al
 | New orders don't appear | Data is cached for hours. Wait, call the cron endpoint, or restart the dev server. |
 | Chat says "Demo mode" | No AI key is set. Add `NVIDIA_API_KEY` (or another provider). |
 | Saving keys fails in production | `CREDENTIALS_SECRET` isn't set. |
+| Some Swedish/German texts appear in English | The text has no translation and no AI key is set on the server, or the AI translation was rejected (placeholders changed). Add the text to `sv.ts`/`de.ts`, or set `NVIDIA_API_KEY`. |
 
 ## Roadmap and known limitations
 
@@ -326,5 +388,8 @@ appears on the Insights page, in the AI's `getInsights` tool, and in the cron al
 - The chat endpoint has no login or rate limit. Add one before sharing a deployment that has a paid AI key.
 - Shopify refunds are counted for orders created in the selected period.
 - Orders older than 60 days need Shopify's `read_all_orders` scope.
+- Numbers and money use Swiss formatting (`1'234`) in every language.
+- Technical error messages from Shopify (e.g. in seeding notifications) are shown as Shopify sends them, in English.
+- AI translations of missing texts use the server's AI key (keys saved in a browser aren't used), because the result is shared by all visitors.
 - Ad platforms reporting in a different currency than the shop aren't converted.
 - The Google Ads connector hasn't been run against the live API yet (no API access).

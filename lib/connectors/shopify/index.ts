@@ -25,7 +25,7 @@ const ORDERS_QUERY = `query($cursor: String, $q: String) {
       id processedAt taxesIncluded
       totalPriceSet { shopMoney { amount } }
       lineItems(first: 50) { nodes { name sku variant { id } quantity originalUnitPriceSet { shopMoney { amount } } totalDiscountSet { shopMoney { amount } } taxLines { priceSet { shopMoney { amount } } } } }
-      refunds { createdAt refundLineItems(first: 50) { nodes { quantity subtotalSet { shopMoney { amount } } lineItem { name sku variant { id } } } } }
+      refunds { createdAt refundLineItems(first: 50) { nodes { quantity subtotalSet { shopMoney { amount } } totalTaxSet { shopMoney { amount } } lineItem { name sku variant { id } } } } }
       transactions(first: 5) { fees { amount { amount } } }
     }
   }

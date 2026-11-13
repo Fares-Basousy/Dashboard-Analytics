@@ -7,6 +7,8 @@ import { MockLanguageModelV4 } from "ai/test";
 import { simulateReadableStream } from "ai";
 import type { Insight } from "@/lib/domain/types";
 import { formatMoney } from "@/lib/format";
+import { english } from "@/lib/i18n/english";
+import type { Translator } from "@/lib/i18n/translate";
 
 const usage = {
   inputTokens: { total: 0, noCache: 0, cacheRead: undefined, cacheWrite: undefined },
@@ -28,15 +30,15 @@ export interface InsightsToolResult {
   insights: Insight[];
 }
 
-export function renderInsightsAnswer({ currency, insights }: InsightsToolResult): string {
-  if (!insights.length) return "No issues detected in this period – all campaigns and products are profitable.";
+export function renderInsightsAnswer({ currency, insights }: InsightsToolResult, { t }: Pick<Translator, "t"> = english): string {
+  if (!insights.length) return t("demo.none");
   const lines = insights
     .slice(0, 5)
-    .map((i, n) => `${n + 1}. **${i.title}** – ${i.recommendation} _(≈ ${formatMoney(i.impact, currency)}/month)_`);
+    .map((i, n) => `${n + 1}. **${i.title}** – ${i.recommendation} _(${t("insights.perMonth", { amount: formatMoney(i.impact, currency) })})_`);
   return [
-    "_Demo mode: rule-based answer (no LLM key configured)._",
+    `_${t("demo.note")}_`,
     "",
-    "Here is where you are losing money and what to do about it:",
+    t("demo.intro"),
     "",
     ...lines,
   ].join("\n");
@@ -47,18 +49,18 @@ type DemoStep =
   | { kind: "text"; text: string };
 
 /** The demo model's only decision: fetch insights first, then answer from them. */
-function nextStep(prompt: PromptMessage[]): DemoStep {
+function nextStep(prompt: PromptMessage[], translator: Pick<Translator, "t">): DemoStep {
   const result = lastToolResult(prompt);
   return result === undefined
     ? { kind: "tool-call", toolCallId: `call-${Date.now()}`, toolName: "getInsights", input: "{}" }
-    : { kind: "text", text: renderInsightsAnswer(result as InsightsToolResult) };
+    : { kind: "text", text: renderInsightsAnswer(result as InsightsToolResult, translator) };
 }
 
-export function createDemoModel() {
+export function createDemoModel(translator: Pick<Translator, "t"> = english) {
   return new MockLanguageModelV4({
     modelId: "demo",
     doGenerate: async ({ prompt }) => {
-      const step = nextStep(prompt as PromptMessage[]);
+      const step = nextStep(prompt as PromptMessage[], translator);
       return step.kind === "tool-call"
         ? {
             content: [{ type: "tool-call", toolCallId: step.toolCallId, toolName: step.toolName, input: step.input }],
@@ -69,7 +71,7 @@ export function createDemoModel() {
         : { content: [{ type: "text", text: step.text }], finishReason: { unified: "stop", raw: undefined }, usage, warnings: [] };
     },
     doStream: async ({ prompt }) => {
-      const step = nextStep(prompt as PromptMessage[]);
+      const step = nextStep(prompt as PromptMessage[], translator);
       if (step.kind === "tool-call") {
         return {
           stream: simulateReadableStream({

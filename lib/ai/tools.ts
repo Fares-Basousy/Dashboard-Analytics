@@ -11,8 +11,13 @@ import { round2 } from "@/lib/format";
 import { campaignPerformance, categoryProfits, channelPerformance, productProfits, summarize } from "@/lib/profit/engine";
 import { detectInsights } from "@/lib/insights/rules";
 import type { InsightsToolResult } from "./demo-model";
+import type { Translator } from "@/lib/i18n/translate";
 
 export interface ToolContext {
+  /** Translates the texts tools produce (insight titles and recommendations). */
+  translator: Pick<Translator, "t">;
+  /** Language the assistant must answer in, e.g. "German". */
+  language: string;
   load: (range: DateRange) => Promise<Dataset>;
   today: string;
   defaultPreset: Preset;
@@ -81,7 +86,7 @@ export function createTools(ctx: ToolContext) {
       inputSchema: z.object({ period }),
       execute: async ({ period: p }): Promise<InsightsToolResult> => {
         const ds = await load(p);
-        return compact({ currency: ds.currency, insights: detectInsights(ds) });
+        return compact({ currency: ds.currency, insights: detectInsights(ds, ctx.translator) });
       },
     }),
 
@@ -93,11 +98,12 @@ export function createTools(ctx: ToolContext) {
   };
 }
 
-export function systemPrompt(ctx: Pick<ToolContext, "today" | "defaultPreset">, currency: string) {
+export function systemPrompt(ctx: Pick<ToolContext, "today" | "defaultPreset" | "language">, currency: string) {
   return `You are the AI profit analyst for Ersatzteilstore, an online spare-parts shop. All money values are in ${currency}.
 Today is ${ctx.today}. The user is looking at the last ${PRESETS[ctx.defaultPreset]} days unless they say otherwise.
 
 Rules:
+- Always answer in ${ctx.language}, whatever language the tool results are in. Keep product, campaign and company names as they are.
 - ALWAYS get numbers from tools. Never estimate or invent figures.
 - Judge profitability by net profit after all costs and by POAS (profit on ad spend), not by revenue or ROAS.
 - Be concise and executive: lead with the answer, then 3–6 bullet points with concrete numbers, then clear next actions.

@@ -7,9 +7,10 @@ import { loadDataset } from "@/lib/connectors/registry";
 import { detectInsights } from "@/lib/insights/rules";
 import { productProfits } from "@/lib/profit/engine";
 import { presetRange } from "@/lib/date-range";
+import { english } from "@/lib/i18n/english";
 
 const TODAY = "2026-11-13";
-const ctx = { load: (r: Parameters<typeof loadDataset>[0]) => loadDataset(r, {}), today: TODAY, defaultPreset: "30d" as const };
+const ctx = { load: (r: Parameters<typeof loadDataset>[0]) => loadDataset(r, {}), today: TODAY, defaultPreset: "30d" as const, translator: english, language: "English" };
 const toolOpts = { toolCallId: "t", messages: [], context: {} };
 
 describe("AI tools", () => {

@@ -32,7 +32,7 @@ export interface ShopifyOrderNode {
   lineItems: { nodes: (ShopifyLineItem & { quantity: number; originalUnitPriceSet: Money; totalDiscountSet: Money; taxLines: { priceSet: Money }[] })[] };
   refunds: {
     createdAt: string;
-    refundLineItems: { nodes: { quantity: number; subtotalSet: Money; lineItem: ShopifyLineItem }[] };
+    refundLineItems: { nodes: { quantity: number; subtotalSet: Money; totalTaxSet: Money; lineItem: ShopifyLineItem }[] };
   }[];
   transactions: { fees: { amount: { amount: string } }[] }[];
 }
@@ -81,8 +81,16 @@ export function mapOrder(o: ShopifyOrderNode, cost: CostConfig): { order: Order;
     // Shopify Payments exposes real fees; other gateways fall back to the configured rate.
     paymentFee: round2(realFees || total * cost.paymentFeePct + cost.paymentFeeFixed),
   };
+  // Verified on a live store: in tax-inclusive shops the refund subtotal is gross (VAT inside),
+  // so the refunded VAT is removed like on the sale – otherwise refunds would be overstated.
   const refunds = o.refunds.flatMap((r) =>
-    r.refundLineItems.nodes.map((l) => ({ orderId: id, date: r.createdAt.slice(0, 10), sku: lineKey(l.lineItem), qty: l.quantity, amount: amount(l.subtotalSet) })),
+    r.refundLineItems.nodes.map((l) => ({
+      orderId: id,
+      date: r.createdAt.slice(0, 10),
+      sku: lineKey(l.lineItem),
+      qty: l.quantity,
+      amount: round2(amount(l.subtotalSet) - (o.taxesIncluded ? amount(l.totalTaxSet) : 0)),
+    })),
   );
   return { order, refunds };
 }

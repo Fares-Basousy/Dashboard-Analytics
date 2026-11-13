@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { getCredentials } from "@/lib/credentials/store";
 import { DEFAULT_PRESET, isPreset, presetRange, previousRange, toISODate } from "@/lib/date-range";
 import { RANGE_PARAM } from "@/lib/navigation";
+import { getI18n } from "@/lib/i18n/page";
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -14,7 +15,8 @@ export async function resolvePageContext(searchParams: SearchParams) {
   const preset = isPreset(value) ? value : DEFAULT_PRESET;
   const today = toISODate(new Date());
   const range = presetRange(preset, today);
-  return { preset, today, range, previous: previousRange(range), creds: await getCredentials() };
+  const [creds, i18n] = await Promise.all([getCredentials(), getI18n()]);
+  return { preset, today, range, previous: previousRange(range), creds, i18n, locale: i18n.locale };
 }
 
 export type PageContext = Awaited<ReturnType<typeof resolvePageContext>>;

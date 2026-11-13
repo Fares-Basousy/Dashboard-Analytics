@@ -2,7 +2,10 @@ import { groupById, matchesPattern, normalizeCredential, type CredentialGroupId,
 
 const MAX_LENGTH = 4096;
 
-export type CredentialFormResult = { ok: true; updates: Credentials } | { ok: false; error: string };
+/** Error as message key + field, so the caller can show it in the user's language. */
+export type CredentialFormError = { key: "cred.empty" | "cred.tooLong" | "cred.spaces" | "cred.invalid" | "cred.invalidExample"; fieldKey?: CredentialKey; example?: string };
+
+export type CredentialFormResult = { ok: true; updates: Credentials } | { ok: false; error: CredentialFormError };
 
 /**
  * Turn submitted form fields into cookie updates for ONE group (pure, unit-tested).
@@ -20,11 +23,13 @@ export function parseCredentialForm(groupId: CredentialGroupId, entries: Record<
     }
     const value = normalizeCredential(field, entries[key] ?? "");
     if (!value) continue;
-    if (value.length > MAX_LENGTH) return { ok: false, error: `${field.label} is too long.` };
-    if (field.secret && /\s/.test(value)) return { ok: false, error: `${field.label} must not contain spaces.` };
-    if (!matchesPattern(field, value)) return { ok: false, error: `${field.label} has an invalid format${field.placeholder ? ` (e.g. ${field.placeholder})` : ""}.` };
+    if (value.length > MAX_LENGTH) return { ok: false, error: { key: "cred.tooLong", fieldKey: key } };
+    if (field.secret && /\s/.test(value)) return { ok: false, error: { key: "cred.spaces", fieldKey: key } };
+    if (!matchesPattern(field, value)) {
+      return { ok: false, error: field.placeholder ? { key: "cred.invalidExample", fieldKey: key, example: field.placeholder } : { key: "cred.invalid", fieldKey: key } };
+    }
     updates[key] = value;
   }
-  if (!clear && !Object.keys(updates).length) return { ok: false, error: "Enter at least one value." };
+  if (!clear && !Object.keys(updates).length) return { ok: false, error: { key: "cred.empty" } };
   return { ok: true, updates };
 }

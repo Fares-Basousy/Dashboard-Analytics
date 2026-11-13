@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatValue, type ValueFormat } from "@/lib/format";
 import { TONE_TEXT, toneFor, type ToneRule } from "@/lib/tone";
+import { useI18n } from "@/components/I18nProvider";
 
 /** Serializable column config, so Server Components can define tables without passing functions. */
 export interface Column<T> {
@@ -27,6 +28,7 @@ interface DataTableProps<T> {
 }
 
 export function DataTable<T extends object>({ rows, columns, rowKey, defaultSort, pageSize = 15, testId, currency }: DataTableProps<T>) {
+  const { t } = useI18n();
   const [sort, setSort] = useState(defaultSort);
   const [expanded, setExpanded] = useState(false);
 
@@ -82,7 +84,7 @@ export function DataTable<T extends object>({ rows, columns, rowKey, defaultSort
       </div>
       {rows.length > pageSize && (
         <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-3 text-xs font-medium text-accent hover:underline">
-          {expanded ? "Show less" : `Show all ${rows.length}`}
+          {expanded ? t("table.showLess") : t("table.showAll", { count: rows.length })}
         </button>
       )}
     </div>

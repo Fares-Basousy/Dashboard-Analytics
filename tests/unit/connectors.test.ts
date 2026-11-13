@@ -35,7 +35,7 @@ describe("Shopify mapper", () => {
         taxesIncluded: false,
         totalPriceSet: money("5"),
         lineItems: { nodes: [{ ...line, quantity: 1, originalUnitPriceSet: money("5"), totalDiscountSet: money("0"), taxLines: [] }, { name: "Gift wrap", sku: null, variant: null, quantity: 1, originalUnitPriceSet: money("2"), totalDiscountSet: money("0"), taxLines: [] }] },
-        refunds: [{ createdAt: "2026-11-02T00:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("5"), lineItem: line }] } }],
+        refunds: [{ createdAt: "2026-11-02T00:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("5"), totalTaxSet: money("0"), lineItem: line }] } }],
         transactions: [],
       },
       costConfig(),
@@ -52,7 +52,7 @@ describe("Shopify mapper", () => {
         taxesIncluded: false,
         totalPriceSet: money("50.00"),
         lineItems: { nodes: [{ name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" }, quantity: 2, originalUnitPriceSet: money("25.00"), totalDiscountSet: money("5.00"), taxLines: [] }] },
-        refunds: [{ createdAt: "2026-11-03T09:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("22.50"), lineItem: { name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" } } }] } }],
+        refunds: [{ createdAt: "2026-11-03T09:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("22.50"), totalTaxSet: money("0"), lineItem: { name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" } } }] } }],
         transactions: [{ fees: [{ amount: { amount: "1.75" } }] }],
       },
       costConfig(),
@@ -76,6 +76,27 @@ describe("Shopify mapper", () => {
     );
     expect(order.date).toBe("2026-10-20"); // business date, not import time
     expect(order.lines[0]).toMatchObject({ unitPrice: 108.1, includedTax: 8.1 });
+  });
+
+  it("removes VAT from refunds in tax-inclusive shops (real Shopify response shape)", () => {
+    // From the seeded dev store: refund of a 19.90 remote control → subtotal 19.90, tax 1.49
+    const line = { name: "Universal-Fernbedienung", sku: "ETS-FB-UNI", variant: null };
+    const { order, refunds } = mapOrder(
+      {
+        id: "1015",
+        processedAt: "2026-10-17T10:00:00Z",
+        taxesIncluded: true,
+        totalPriceSet: money("19.90"),
+        lineItems: { nodes: [{ ...line, quantity: 1, originalUnitPriceSet: money("19.90"), totalDiscountSet: money("0"), taxLines: [{ priceSet: money("1.49") }] }] },
+        refunds: [{ createdAt: "2026-11-13T12:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("19.90"), totalTaxSet: money("1.49"), lineItem: line }] } }],
+        transactions: [],
+      },
+      costConfig(),
+    );
+    expect(refunds[0].amount).toBe(18.41);
+    // A full refund cancels the net sale exactly.
+    const l = order.lines[0];
+    expect(l.unitPrice * l.qty - l.discount - (l.includedTax ?? 0)).toBeCloseTo(refunds[0].amount, 2);
   });
 
   it("ignores tax lines when prices exclude tax (tax is charged on top)", () => {

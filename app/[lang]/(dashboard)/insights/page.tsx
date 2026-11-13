@@ -8,22 +8,23 @@ import { PageData } from "@/components/PageData";
 import { InsightCard } from "@/components/InsightCard";
 import { getBriefing, getInsights } from "@/lib/insights/report";
 import { formatMoney } from "@/lib/format";
+import { localeHref } from "@/lib/i18n/config";
+import { getI18n } from "@/lib/i18n/page";
 import type { PageContext } from "@/lib/page-context";
 
-export default function InsightsPage({ searchParams }: PageProps<"/insights">) {
+export default async function InsightsPage({ searchParams }: PageProps<"/[lang]/insights">) {
+  const { t } = await getI18n();
   return (
     <>
-      <PageHeader
-        title="AI insights"
-        description="The system continuously scans all sources for money leaks and growth opportunities, and recommends concrete actions with their estimated monthly impact."
-      />
+      <PageHeader title={t("insights.title")} description={t("insights.description")} />
       <PageData searchParams={searchParams}>{(ctx) => <Insights ctx={ctx} />}</PageData>
     </>
   );
 }
 
 async function Insights({ ctx }: { ctx: PageContext }) {
-  const { currency, insights } = await getInsights(ctx.preset, ctx.today, ctx.creds);
+  const { t, rich } = ctx.i18n;
+  const { currency, insights } = await getInsights(ctx.preset, ctx.today, ctx.creds, ctx.locale);
   const totalImpact = insights.reduce((s, i) => s + i.impact, 0);
 
   return (
@@ -34,9 +35,9 @@ async function Insights({ ctx }: { ctx: PageContext }) {
       </Suspense>
 
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">{insights.length} findings</h2>
+        <h2 className="text-sm font-semibold">{t("insights.count", { count: insights.length })}</h2>
         <p className="text-sm text-muted">
-          Combined potential: <span className="font-semibold text-good">≈ {formatMoney(totalImpact, currency)}/month</span>
+          {rich("insights.potential", { amount: <span className="font-semibold text-good">≈ {formatMoney(totalImpact, currency)}</span> })}
         </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
@@ -49,22 +50,25 @@ async function Insights({ ctx }: { ctx: PageContext }) {
 }
 
 async function Briefing({ ctx }: { ctx: PageContext }) {
-  const briefing = await getBriefing(ctx.preset, ctx.today, ctx.creds);
+  const { t, rich } = ctx.i18n;
+  const briefing = await getBriefing(ctx.preset, ctx.today, ctx.creds, ctx.locale);
   if (!briefing) {
     return (
-      <Card title="Executive briefing">
+      <Card title={t("insights.briefing")}>
         <p className="text-sm text-muted">
-          Add an AI key in{" "}
-          <Link href="/settings" className="font-medium text-accent underline">
-            Connections & Keys
-          </Link>{" "}
-          to get an AI-written weekly briefing on top of the findings below.
+          {rich("insights.briefingMissing", {
+            link: (
+              <Link href={localeHref(ctx.locale, "/settings")} className="font-medium text-accent underline">
+                {t("nav.settings")}
+              </Link>
+            ),
+          })}
         </p>
       </Card>
     );
   }
   return (
-    <Card title="Executive briefing" subtitle={`Written by ${briefing.model} from the findings below`}>
+    <Card title={t("insights.briefing")} subtitle={t("insights.briefingBy", { model: briefing.model })}>
       <div className="prose-chat text-sm">
         <ReactMarkdown>{briefing.text}</ReactMarkdown>
       </div>
