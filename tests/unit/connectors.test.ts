@@ -11,15 +11,36 @@ const money = (amount: string) => ({ shopMoney: { amount } });
 const RANGE = { from: "2026-11-01", to: "2026-11-02" };
 
 describe("Shopify mapper", () => {
-  it("maps variants and skips ones without SKU", () => {
-    expect(mapVariant({ sku: "X-1", price: "19.90", product: { title: "Filter", productType: "" }, inventoryItem: { unitCost: { amount: "7.5" } } })).toEqual({
+  it("maps variants by SKU", () => {
+    expect(mapVariant({ id: "gid://shopify/ProductVariant/7", sku: "X-1", title: "Default Title", price: "19.90", product: { title: "Filter", productType: "" }, inventoryItem: { unitCost: { amount: "7.5" } } })).toEqual({
       sku: "X-1",
       title: "Filter",
       category: "Uncategorized",
       price: 19.9,
       unitCost: 7.5,
     });
-    expect(mapVariant({ sku: null, price: "1", product: { title: "x", productType: "y" }, inventoryItem: null })).toBeNull();
+  });
+
+  it("falls back to the variant ID when a product has no SKU, and names variants", () => {
+    const p = mapVariant({ id: "gid://shopify/ProductVariant/42", sku: "", title: "Blue", price: "5", product: { title: "Knob", productType: "Oven" }, inventoryItem: null });
+    expect(p).toMatchObject({ sku: "variant-42", title: "Knob – Blue", unitCost: 0 });
+  });
+
+  it("matches SKU-less order and refund lines to the same variant key", () => {
+    const line = { name: "Knob", sku: null, variant: { id: "gid://shopify/ProductVariant/42" } };
+    const { order, refunds } = mapOrder(
+      {
+        id: "gid://shopify/Order/9",
+        createdAt: "2026-11-01T10:00:00Z",
+        totalPriceSet: money("5"),
+        lineItems: { nodes: [{ ...line, quantity: 1, originalUnitPriceSet: money("5"), totalDiscountSet: money("0") }, { name: "Gift wrap", sku: null, variant: null, quantity: 1, originalUnitPriceSet: money("2"), totalDiscountSet: money("0") }] },
+        refunds: [{ createdAt: "2026-11-02T00:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("5"), lineItem: line }] } }],
+        transactions: [],
+      },
+      costConfig(),
+    );
+    expect(order.lines.map((l) => l.sku)).toEqual(["variant-42", "custom-Gift wrap"]);
+    expect(refunds[0].sku).toBe("variant-42");
   });
 
   it("maps orders, real payment fees and refunds", () => {
@@ -28,8 +49,8 @@ describe("Shopify mapper", () => {
         id: "gid://shopify/Order/123",
         createdAt: "2026-11-01T10:00:00Z",
         totalPriceSet: money("50.00"),
-        lineItems: { nodes: [{ sku: "X-1", quantity: 2, originalUnitPriceSet: money("25.00"), totalDiscountSet: money("5.00") }] },
-        refunds: [{ createdAt: "2026-11-03T09:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("22.50"), lineItem: { sku: "X-1" } }] } }],
+        lineItems: { nodes: [{ name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" }, quantity: 2, originalUnitPriceSet: money("25.00"), totalDiscountSet: money("5.00") }] },
+        refunds: [{ createdAt: "2026-11-03T09:00:00Z", refundLineItems: { nodes: [{ quantity: 1, subtotalSet: money("22.50"), lineItem: { name: "Filter", sku: "X-1", variant: { id: "gid://shopify/ProductVariant/7" } } }] } }],
         transactions: [{ fees: [{ amount: { amount: "1.75" } }] }],
       },
       costConfig(),

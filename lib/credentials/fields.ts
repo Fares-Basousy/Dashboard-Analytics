@@ -22,8 +22,11 @@ export interface CredentialGroup {
   title: string;
   description: string;
   fields: readonly CredentialField[];
-  /** Keys that must all be present for the group to count as configured. */
-  required: readonly string[];
+  /**
+   * Alternative key sets: the group is configured when ALL keys of ANY one set are present
+   * (e.g. Shopify: client credentials OR a legacy static token). Empty = never "configured".
+   */
+  requiredAnyOf: readonly (readonly string[])[];
 }
 
 export const CREDENTIAL_GROUPS = [
@@ -39,17 +42,23 @@ export const CREDENTIAL_GROUPS = [
       { key: "AI_PROVIDER", label: "Provider override (nvidia | anthropic | openai | gateway | demo)", secret: false, placeholder: "auto" },
       { key: "AI_MODEL", label: "Model override", secret: false, placeholder: "e.g. nvidia/nemotron-3.5-super-vl-120b-a12b" },
     ],
-    required: [],
+    requiredAnyOf: [],
   },
   {
     id: "shopify",
     title: "Shopify",
-    description: "Custom app with read_orders, read_products, read_inventory, read_returns scopes.",
+    description:
+      "Dev Dashboard app with read_orders, read_products, read_inventory scopes, installed on the store. Use client ID + secret (current) – or a legacy custom-app token.",
     fields: [
       { key: "SHOPIFY_STORE_DOMAIN", label: "Store domain", secret: false, placeholder: "your-store.myshopify.com", pattern: "[a-z0-9][a-z0-9\\-]*\\.myshopify\\.com" },
-      { key: "SHOPIFY_ADMIN_TOKEN", label: "Admin API access token", secret: true, placeholder: "shpat_…" },
+      { key: "SHOPIFY_CLIENT_ID", label: "Client ID (Dev Dashboard app)", secret: false, pattern: "[A-Za-z0-9]+" },
+      { key: "SHOPIFY_CLIENT_SECRET", label: "Client secret", secret: true, placeholder: "shpss_…" },
+      { key: "SHOPIFY_ADMIN_TOKEN", label: "Legacy Admin API token – only for apps created before 2026", secret: true, placeholder: "shpat_…" },
     ],
-    required: ["SHOPIFY_STORE_DOMAIN", "SHOPIFY_ADMIN_TOKEN"],
+    requiredAnyOf: [
+      ["SHOPIFY_STORE_DOMAIN", "SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET"],
+      ["SHOPIFY_STORE_DOMAIN", "SHOPIFY_ADMIN_TOKEN"],
+    ],
   },
   {
     id: "google_ads",
@@ -63,7 +72,7 @@ export const CREDENTIAL_GROUPS = [
       { key: "GOOGLE_ADS_CUSTOMER_ID", label: "Customer ID", secret: false, placeholder: "123-456-7890", pattern: "\\d{3}-?\\d{3}-?\\d{4}" },
       { key: "GOOGLE_ADS_LOGIN_CUSTOMER_ID", label: "Manager (MCC) ID – optional", secret: false, pattern: "\\d{3}-?\\d{3}-?\\d{4}" },
     ],
-    required: ["GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"],
+    requiredAnyOf: [["GOOGLE_ADS_DEVELOPER_TOKEN", "GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN", "GOOGLE_ADS_CUSTOMER_ID"]],
   },
   {
     id: "meta",
@@ -73,7 +82,7 @@ export const CREDENTIAL_GROUPS = [
       { key: "META_ACCESS_TOKEN", label: "Access token", secret: true },
       { key: "META_AD_ACCOUNT_ID", label: "Ad account ID", secret: false, placeholder: "act_1234567890", pattern: "(act_)?\\d+" },
     ],
-    required: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"],
+    requiredAnyOf: [["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"]],
   },
 ] as const satisfies readonly CredentialGroup[];
 
@@ -102,5 +111,5 @@ export function matchesPattern(field: CredentialField, value: string): boolean {
 }
 
 export function isGroupConfigured(id: CredentialGroupId, creds: Credentials): boolean {
-  return groupById(id).required.every((k) => Boolean(creds[k as CredentialKey]));
+  return groupById(id).requiredAnyOf.some((set) => set.every((k) => Boolean(creds[k as CredentialKey])));
 }

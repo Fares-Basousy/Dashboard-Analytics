@@ -83,6 +83,16 @@ POAS       = gross profit attributed to the campaign ÷ ad spend   (POAS < 1 ⇒
 
 The UI, profit engine, insights and AI tools need no changes.
 
+## Connecting Shopify
+
+Shopify no longer allows new custom apps to be created in the store admin (since January 2026). Apps are created in the **Dev Dashboard** and authenticate with the **client credentials grant**: the app exchanges its client ID and secret for an Admin API token valid for 24 hours. This app fetches and refreshes that token automatically (`lib/connectors/shopify/auth.ts`).
+
+1. Go to [dev.shopify.com](https://dev.shopify.com), create a **dev store** there (it must be in the same organization as the app), and add a few products with a cost per item, plus some test orders.
+2. Create an app, choose the scopes `read_orders`, `read_products` and `read_inventory`, release a version, and install it on the dev store.
+3. Enter the store domain, client ID and client secret on **Connections & Keys** (or set `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`).
+
+Legacy custom apps created before 2026 still work: set `SHOPIFY_ADMIN_TOKEN` instead of the client ID and secret.
+
 ## API keys and security
 
 - Keys entered in the UI are stored in **one cookie** that is `httpOnly` (invisible to JavaScript), `secure` in production, `sameSite=lax`, and **encrypted with AES-256-GCM** (`CREDENTIALS_SECRET`). A leaked cookie value is useless.
